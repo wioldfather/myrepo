@@ -1,0 +1,14 @@
+{
+  "name": "重拾 Chóngshí",
+  "short_name": "重拾",
+  "description": "Commute-sized Mandarin reactivation: ears-only rides, scenes, recall and puzzles.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0D2534",
+  "theme_color": "#0D2534",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

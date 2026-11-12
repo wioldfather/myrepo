@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>重拾 Chóngshí</title>
+<meta name="description" content="A commute-sized Mandarin reactivation app for a career advisor: ears-only rides, scenes, recall and puzzles.">
+<meta name="theme-color" content="#0D2534">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-180.png">
+<style>:root { padding: env(safe-area-inset-top, 0px) 0 env(safe-area-inset-bottom, 0px); }</style>
+<link rel="stylesheet" href="app.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@500;600;700&display=swap" media="print" onload="this.media='all'">
+</head>
+<body>
+<!-- app:start -->
+<header class="sign">
+  <div class="sign-in">
+    <button id="back" class="iconbtn" type="button" aria-label="Back" hidden><span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 5.5 8 12l6.5 6.5"/></svg></span></button>
+    <div class="sign-title"><b id="t-zh" lang="zh-CN">重拾</b><span id="t-en">Chóngshí</span></div>
+    <span id="leg" class="leg" hidden></span>
+    <button id="py" class="pybtn" type="button" aria-pressed="false" aria-label="Show pinyin above characters" lang="zh-CN">拼</button>
+    <button id="gear" class="iconbtn" type="button" aria-label="Settings"><span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h9M19 7h1M4 17h1M11 17h9"/><circle cx="16" cy="7" r="2.6"/><circle cx="8" cy="17" r="2.6"/></svg></span></button>
+  </div>
+</header>
+<main id="view"></main>
+<nav id="tabs" class="tabs" aria-label="Sections"></nav>
+<div id="sheet" class="sheet" hidden></div>
+<div id="toast" class="toast" role="status"></div>
+<script type="module" src="js/main.js"></script>
+<!-- app:end -->
+</body>
+</html>

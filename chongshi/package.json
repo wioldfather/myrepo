@@ -1,0 +1,14 @@
+{
+  "name": "chongshi",
+  "private": true,
+  "type": "module",
+  "description": "重拾 Chóngshí: a commute-sized Mandarin reactivation app",
+  "scripts": {
+    "content": "node tools/build-content.mjs",
+    "serve": "node tools/serve.mjs",
+    "test": "node tests/e2e.mjs"
+  },
+  "devDependencies": {
+    "pinyin-pro": "3.29.5"
+  }
+}
