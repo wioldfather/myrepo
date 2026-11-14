@@ -3,13 +3,15 @@
 //   连句 weave       put the pieces of a sentence in native order
 //   成语 idiom       find the four characters a sentence is missing
 //   分寸 register    three ways to say it; pick the one that fits the moment
-import { CHENGYU, REGISTER } from './content.gen.js';
+import { CHENGYU, REGISTER, SCENES } from './content.gen.js';
 import * as store from './store.js';
-import { speak, stop, sfx, canSpeak, homophones } from './audio.js';
+import { speak, stop, sfx, canSpeak, homophones, hasClip } from './audio.js';
 import { h, fill, zh, icon, go, button, sayButton, strip, summary, isHan, pinyinOf } from './ui.js';
 import { wayOut } from './journey.js';
 
 const GAMES = {
+  fast: { zh: '快听', en: 'Fast ear', blurb: 'Real lines, a little faster each time you catch one.', skill: 'Catching fast speech', n: 8 },
+  quick: { zh: '快说', en: 'Quick-fire', blurb: 'Say it before the clock runs out.', skill: 'Finding words fast', n: 8 },
   dictation: { zh: '听写', en: 'Dictation tiles', blurb: 'Hear it at full speed. Rebuild it one character at a time.', skill: 'Ear to character', n: 8 },
   weave: { zh: '连句', en: 'Sentence weave', blurb: 'Put the pieces in the order a native speaker would.', skill: 'Word order', n: 8 },
   chengyu: { zh: '成语', en: 'Idiom match', blurb: 'Find the four-character idiom the sentence is missing.', skill: 'Idioms in context', n: 8 },
@@ -23,7 +25,7 @@ export function gamesHub() {
     return h('button', { class: 'game-card', type: 'button', onclick: () => go('game-' + key) },
       h('span', { class: 'game-tile', lang: 'zh-CN' }, g.zh),
       h('span', { class: 'game-text' }, h('b', null, g.en), h('span', null, g.blurb)),
-      h('span', { class: 'game-best' }, store.best(key) ? `Best ${store.best(key)}/${g.n}` : g.skill));
+      h('span', { class: 'game-best' }, key === 'fast' && store.best('pace') ? `Fastest caught ${(store.best('pace') / 10).toFixed(1)}×` : store.best(key) ? `Best ${store.best(key)}/${g.n}` : g.skill));
   };
   const el = h('div', { class: 'page' }, h('div', { class: 'game-list' }, Object.keys(GAMES).map(card)));
   return { el, title: '游戏', sub: 'Puzzles · short runs, real phrases' };
@@ -34,6 +36,17 @@ function buildRounds(type) {
   const speakable = (n) => store.pickChunks(n + 4).filter((c) => [...c.zh].filter(isHan).length <= 14).slice(0, n);
   const weavable = (n) => store.pickChunks(n + 4).filter((c) => c.ex.length >= 3).slice(0, n); // phrases kept from conversations have no sentence to weave
   switch (type) {
+    case 'fast': {
+      // recorded lines where there are any; otherwise every line, on the device voice
+      const all = SCENES.filter((sc) => !sc.gen).flatMap((sc) => sc.lines.map((l) => ({ ...l, scene: sc })));
+      const recorded = all.filter((l) => hasClip(l.zh));
+      return of('fast', store.shuffle((recorded.length >= 8 ? recorded : all).filter((l) => l.zh.length >= 8 && l.zh.length <= 34)).slice(0, 8));
+    }
+    case 'quick': {
+      // phrases already in the deck first: this trains speed of access, not first learning
+      const seen = store.shuffle(store.CHUNKS.filter((c) => store.card(c.id)));
+      return of('quick', [...seen, ...store.pickChunks(8).filter((c) => !seen.includes(c))].slice(0, 8));
+    }
     case 'dictation': return of('dictation', speakable(8));
     case 'weave': return of('weave', weavable(8));
     case 'chengyu': return of('chengyu', store.pickSpaced(CHENGYU, 8));
@@ -225,7 +238,60 @@ function register(r, done) {
   return h('div', null, h('p', { class: 'ask' }, 'Which one fits?'), h('p', { class: 'situation' }, r.sit), h('div', { class: 'opts' }, buttons));
 }
 
-const ROUND = { dictation, weave, chengyu, register };
+// 快听: one line of real dialogue, no text. Each line caught pushes the speed up; a miss eases it back.
+let pace = 1;
+function fast(l, done) {
+  const rate = pace;
+  const others = store.shuffle(l.scene.lines.filter((x) => x.en !== l.en && Math.abs(x.en.length - l.en.length) < 40)).slice(0, 2);
+  const opts = store.shuffle([{ en: l.en, ok: true }, ...others.map((x) => ({ en: x.en, ok: false }))]);
+  let replays = 0;
+  let chosen = false;
+  const buttons = opts.map((o) => h('button', { class: 'opt', type: 'button', onclick: () => {
+    if (chosen) return;
+    chosen = true;
+    stop();
+    buttons.forEach((b, k) => { b.disabled = true; if (opts[k].ok) b.classList.add('ok'); else if (opts[k] === o) b.classList.add('no'); });
+    pace = Math.max(0.9, Math.min(1.6, +(pace + (o.ok ? 0.1 : -0.1)).toFixed(1)));
+    if (o.ok) store.setBest('pace', Math.round(rate * 10));
+    done({ ok: o.ok, clean: o.ok && !replays, detail: [h('div', { class: 'answer' }, zh(l.zh), sayButton(l.zh)), h('p', { class: 'chunk-note' }, o.ok ? `Caught at ${rate.toFixed(1)}×. Next one is ${pace.toFixed(1)}×.` : `Missed at ${rate.toFixed(1)}×. Tap the speaker to hear it at normal speed.`)] });
+  } }, o.en));
+  speak(l.zh, { rate, alt: l.s === 'S' });
+  return h('div', null,
+    h('p', { class: 'ask' }, 'What did you hear?'),
+    h('div', { class: 'listen-row' },
+      h('button', { class: 'bigplay', type: 'button', 'aria-label': 'Play again', onclick: () => { replays++; speak(l.zh, { rate, alt: l.s === 'S' }); } }, icon('sound')),
+      h('span', { class: 'pace' }, rate.toFixed(1) + '×'), h('span', { class: 'note' }, 'A replay costs the clean mark.')),
+    h('div', { class: 'opts' }, buttons));
+}
+
+// 快说: the cue appears, the clock starts. Say the Chinese before it runs out, then check yourself.
+function quick(c, done) {
+  const limit = (3.5 + [...c.zh].filter(isHan).length * 0.3) * 1000 / (window.__CS_FAST || 1);
+  const bar = h('i');
+  const stage = h('div', { class: 'quick-stage' });
+  let timer;
+  let late = false;
+  const reveal = () => {
+    clearTimeout(timer);
+    bar.style.transition = 'none';
+    speak(c.zh);
+    fill(stage, h('div', { class: 'answer' }, zh(c.zh, { cls: 'big' }), sayButton(c.zh)),
+      late ? h('p', { class: 'note' }, 'Time ran out before you finished.') : null,
+      h('div', { class: 'actions' },
+        button('Had it', 'primary', () => done({ ok: true, clean: !late, detail: [zh(c.zh, { cls: 'big' }), h('p', { class: 'chunk-note' }, c.note)] }), 'check'),
+        button('Not quite', 'ghost', () => done({ ok: false, clean: false, detail: [zh(c.zh, { cls: 'big' }), h('p', { class: 'chunk-note' }, c.note)] }), 'x')));
+  };
+  fill(stage, h('div', { class: 'actions' }, button('Said it', 'primary', reveal, 'check')));
+  timer = setTimeout(() => { late = true; sfx('bad'); reveal(); }, limit);
+  requestAnimationFrame(() => { bar.style.transition = `width ${limit}ms linear`; bar.style.width = '0%'; });
+  return h('div', null,
+    h('p', { class: 'ask' }, 'Say it in Chinese, now'),
+    h('p', { class: 'prompt-en' }, c.en),
+    h('div', { class: 'bar clock' }, bar),
+    stage);
+}
+
+const ROUND = { dictation, weave, chengyu, register, fast, quick };
 
 export function gameView(type) {
   if (!GAMES[type]) type = 'mix';
@@ -253,9 +319,9 @@ export function gameView(type) {
         streak = wasClean ? streak + 1 : 0;
         const gain = (wasClean ? 3 : ok ? 1 : 0) + (streak >= 3 ? 1 : 0); // a run of clean answers pays a little extra
         km += gain;
-        roundEl.querySelectorAll('.bank, .helps').forEach((x) => { x.hidden = true; });
+        roundEl.querySelectorAll('.bank, .helps, .quick-stage, .clock').forEach((x) => { x.hidden = true; });
         // Feed the result back into spacing: slips resurface in Recall; idioms and register items are scheduled here.
-        if (t === 'dictation' || t === 'weave') { if (!wasClean) store.shake(item.id); } else store.rate(item.id, wasClean ? 1 : 0);
+        if (t === 'dictation' || t === 'weave' || t === 'quick') { if (!wasClean) store.shake(item.id); } else if (t !== 'fast') store.rate(item.id, wasClean ? 1 : 0);
         sfx(wasClean ? 'good' : ok ? 'tap' : 'bad');
         const next = () => { stop(); if (++i < rounds.length) show(); else finish(); };
         onEnter = next;

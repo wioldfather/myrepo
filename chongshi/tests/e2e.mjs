@@ -647,6 +647,97 @@ await test('children: meet the words, find the picture, take turns, earn stars',
   for (const h of ['kids', 'kids-set-colors', 'kids-set-numbers', 'kids-home']) { await go(page, h); await noOverflow(page, h); }
 });
 
+await test('fast ear speeds up as lines are caught; quick-fire runs against the clock', {}, async (page) => {
+  await page.evaluate(() => { window.__SPEAK_MS = 5; window.__CS_FAST = 40; });
+  const LINES_EN = new Map(SCENES.flatMap((sc) => sc.lines.map((l) => [l.zh.replace(/……/g, '，').replace(/[“”]/g, ''), l.en])));
+  await go(page, 'game-fast');
+  const paces = [];
+  for (let n = 0; n < 8; n++) {
+    await page.waitForSelector('.round .opt:not(:disabled)');
+    paces.push(await page.locator('.pace').textContent());
+    const heard = await page.evaluate(() => window.__spoken[window.__spoken.length - 1]);
+    const en = LINES_EN.get(heard.text);
+    assert(en, 'spoken line not found: ' + heard.text);
+    const opts = await page.$$eval('.round .opt', (els) => els.map((e) => e.textContent));
+    assert(opts.length === 3 && opts.includes(en), 'three meanings including the right one');
+    await page.locator('.round .opt').nth(n === 2 ? opts.findIndex((o) => o !== en) : opts.indexOf(en)).click();
+    await page.click('.verdict .primary');
+  }
+  assert(paces.slice(0, 5).join(' ') === '1.0× 1.1× 1.2× 1.1× 1.2×', 'pace climbs on a catch and eases on a miss: ' + paces.join(' '));
+  await page.waitForSelector('.summary');
+  assert((await state(page)).best.pace >= 13, 'fastest pace saved');
+  await go(page, 'game-quick');
+  for (let n = 0; n < 8; n++) {
+    await page.waitForSelector('.quick-stage');
+    if (n === 0) assert((await page.locator('.bar.clock').boundingBox()).height >= 8, 'the countdown bar is visible');
+    if (n === 1) { // let the clock run out
+      await page.waitForFunction(() => /Time ran out/.test(document.querySelector('.quick-stage').textContent), null, { timeout: 5000 });
+      await page.click('.quick-stage >> text=Not quite');
+    } else {
+      await page.click('.quick-stage >> text=Said it');
+      await page.click('.quick-stage >> text=Had it');
+    }
+    await page.click('.verdict .primary');
+  }
+  await page.waitForSelector('.summary');
+  assert((await page.locator('.summary-rows dd').first().textContent()) === '7 / 8', 'seven clean, one timed out');
+  await go(page, 'games');
+  assert(/Fastest caught 1\.\d×/.test(await page.locator('.game-card').first().textContent()), 'hub shows the fastest pace caught');
+});
+
+await test('children: stories, songs, treasure hunt, reading set, easier rounds, mixed review', {}, async (page) => {
+  await page.evaluate(() => { window.__SPEAK_MS = 5; });
+  await go(page, 'kids-stories');
+  assert((await page.locator('.ksets button').count()) === KIDS.stories.length, 'stories listed');
+  await page.locator('.ksets button').first().click();
+  for (let i = 0; i < KIDS.stories[0].pages.length; i++) { await page.waitForSelector('.kcard.story'); await page.click('.kids .primary'); }
+  await page.click('text=Show the answer');
+  assert((await plain(page.locator('.knew .zh'))) === KIDS.stories[0].ask.pic, 'answer shown');
+  await noOverflow(page, 'story end');
+  await go(page, 'kids-songs');
+  await page.locator('.ksets button').first().click();
+  await page.waitForSelector('.kline');
+  assert((await page.locator('.kline').count()) === KIDS.songs[0].lines.length, 'song lines listed');
+  await page.click('text=We sang it!');
+  await page.waitForSelector('.kstars');
+  await go(page, 'kids-hunt');
+  for (let i = 0; i < 8; i++) { await page.waitForSelector('.kcard'); await page.click('.kids .primary'); }
+  await page.waitForSelector('.kstars');
+  assert((await state(page)).kids.p[0].stars === 3, 'a star each for story, song and hunt');
+  // easier rounds for one child, alone
+  await go(page, 'kids');
+  await page.locator('.kname').first().click();
+  await page.check('#kid-easy');
+  await page.click('text=Save');
+  await page.click('.kwho button >> nth=0');
+  await go(page, 'kids-set-wild');
+  for (let i = 0; i < 8; i++) { await page.waitForSelector('.kcard'); await page.click('.kids .primary'); }
+  await page.click('text=找一找');
+  const sizes = [];
+  for (let n = 0; n < 8; n++) {
+    await page.waitForFunction((k) => document.querySelectorAll('.kdots i.on').length === k && document.querySelector('.ktile'), n);
+    sizes.push(await page.locator('.ktile').count());
+    await page.click(`.ktile[data-word="${await plain(page.locator('.khear .zh'))}"]`);
+  }
+  await page.waitForSelector('.kstars');
+  assert(sizes.join('') === '22223333', 'easier rounds: ' + sizes.join(''));
+  // the reading set does not say the word until asked
+  await go(page, 'kids-set-chars');
+  for (let i = 0; i < 8; i++) { await page.waitForSelector('.kcard'); await page.click('.kids .primary'); }
+  await page.click('text=找一找');
+  await page.waitForSelector('.ktile');
+  const before = await page.evaluate(() => window.__spoken.length);
+  await page.waitForTimeout(300);
+  assert((await page.evaluate(() => window.__spoken.length)) === before, 'the character is not read out for them');
+  assert(!(await page.locator('.khear rt').first().isVisible()), 'no pinyin on the reading prompt');
+  // mixed review appears once words have been met, and opens straight on the games
+  await go(page, 'kids');
+  await page.click('text=混一混');
+  await page.waitForSelector('text=找一找', { timeout: 5000 }); // straight to the games, with no introduction to sit through
+  assert(!(await page.locator('.kcard').count()), 'mix-up opens on the games, not the introduction');
+  for (const h of ['kids', 'kids-songs-2', 'kids-stories-1', 'kids-hunt']) { await go(page, h); await noOverflow(page, h); }
+});
+
 await test('recorded lines play from audio files, with the device voice for everything else', { scripts: ['window.__WITH_CLIPS = true;', FAKE_TTS, NO_MIC], tts: false }, async (page) => {
   const sc = SCENES[0];
   const recorded = sc.lines.filter((l) => CLIPS[l.zh]);
@@ -673,7 +764,7 @@ await test('recorded lines play from audio files, with the device voice for ever
 for (const [w, hgt] of [[360, 640], [390, 844], [768, 1024], [1280, 800]]) {
   await test(`layout ${w}×${hgt}: no sideways scroll, controls reachable`, { viewport: { width: w, height: hgt } }, async (page) => {
     await page.click('#py');
-    for (const h of ['home', 'scenes', 'scene-s14', 'recall', 'recall-words', 'level', 'talk', 'compose', 'games', 'game-weave', 'game-dictation', 'game-chengyu', 'game-register', 'ride']) {
+    for (const h of ['home', 'scenes', 'scene-s14', 'recall', 'recall-words', 'level', 'talk', 'compose', 'games', 'game-weave', 'game-dictation', 'game-chengyu', 'game-register', 'game-fast', 'game-quick', 'ride']) {
       await go(page, h);
       await noOverflow(page, h);
       if (h === 'scene-s14') { await page.click('.steps button:nth-child(3)'); await noOverflow(page, 'transcript'); }

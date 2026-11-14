@@ -366,6 +366,7 @@ export const kids = () => kidState();
 export function kidFound(i, word) { const k = kidState(); k.p[i].w[word] = (k.p[i].w[word] || 0) + 1; save(); }
 export function kidStar(i, n = 1) { kidState().p[i].stars += n; save(); }
 export function kidName(i, name) { kidState().names[i] = name.trim().slice(0, 12) || fresh().kids.names[i]; save(); }
+export function kidEasy(i, on) { kidState().p[i].easy = !!on; save(); }
 export function homeSaid(zh) { const k = kidState(); k.said[zh] = (k.said[zh] || 0) + 1; save(); }
 // A set is "known" once the child has found every word in it twice.
 export const kidKnows = (i, set) => set.words.every((w) => (kidState().p[i].w[w.zh] || 0) >= 2);

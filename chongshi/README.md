@@ -18,8 +18,8 @@ offline after the first load and can be added to the home screen.
 | **场景 Scenes** | Any time | 18 advising conversations on five "lines". Each has four steps: listen with the text hidden, answer inference questions in Chinese, read the transcript with notes on usage and culture, then play the advisor yourself. Claude can write new ones on any topic. |
 | **复习 Recall** | Any time | Two decks on one scheduler. Phrases: an English cue, you produce the Chinese. Words: 7,900 graded words (HSK 1–6 plus the 7–9 band), by eye or by ear. |
 | **水平 Level check** | Every few weeks | Six minutes, 56 sampled words by eye and by ear, corrected for guessing. Reports how much of each HSK band is still there and a vocabulary estimate, and points the Words deck at the first band with gaps. |
-| **游戏 Puzzles** | Any time | 听写 dictation with homophone decoy tiles, 连句 sentence weave, 成语 idiom match, 分寸 register choices. |
-| **一起学 Learn together** | With Kai and Swae | A children's side for two young beginners on the parent's device. Eleven picture sets (80 words): meet the words, find the picture you hear, match pairs, and an action game. Turns alternate, nothing is marked wrong, and stars build each child's train. 家里说 lists what the grown-up can say at breakfast, bath and bedtime. |
+| **游戏 Puzzles** | Any time | 快听 fast ear (real lines, faster each time you catch one), 快说 quick-fire (say it before the clock runs out), 听写 dictation with homophone decoy tiles, 连句 sentence weave, 成语 idiom match, 分寸 register choices. |
+| **一起学 Learn together** | With Kai and Swae | A children's side for two young beginners on the parent's device. Fourteen picture sets (102 words, including wild animals, dinosaurs and a first-characters set for a beginning reader): meet the words, find the picture you hear, match pairs, and review a mix of words already met. Bedtime picture stories, songs to tunes the parent knows, an action game and a treasure hunt around the house. Turns alternate, nothing is marked wrong, an easier setting suits a younger child, and stars build each child's train. 家里说 lists what the grown-up can say at breakfast, bath and bedtime. |
 
 Authored content: 141 phrases, 18 scenes, 35 idioms, 18 register situations. Every phrase is one the advisor
 would say or needs to understand, including current student slang (卷, 躺平, 搭子, 社恐, 上岸, 复盘).
@@ -42,6 +42,19 @@ from learning one.
   see it. Shadowing follows the model.
 - **Pragmatics.** Register items and scene notes cover how to soften criticism, deflect a compliment, decline
   politely, and what 还行吧 really means.
+
+## What the design rests on, and how firmly
+
+- Relearned vocabulary comes back faster than new vocabulary (the "savings" effect). Well supported, including
+  a study of 304 returnees from Japan and Korea. This is why the scheduler pushes known items far out.
+- Varied listening practice improves adults' perception of Mandarin tones. Supported by several small studies.
+  The fast-ear game and by-ear word reviews lean on this; the app has only a few voices, so the variety is limited.
+- Young children learn more from an app used with a parent than alone. Supported by a meta-analysis and
+  e-book studies. This is why the children's side is built for a parent and child together, with prompts for
+  the parent.
+- Songs, stories and action games for children learning a second language. Plausible and widely used; the
+  evidence found for this build was mostly about first-language development, so treat these as reasonable
+  practice, not proven method.
 
 ## Audio and microphone
 
@@ -122,7 +135,7 @@ node tools/build-words.mjs path/to/complete.min.json
 npm test
 ```
 
-Runs 28 end-to-end checks in headless Chromium against the local server (start `npm run serve` first): every
+Runs 30 end-to-end checks in headless Chromium against the local server (start `npm run serve` first): every
 mode played to completion, scheduling, persistence across reloads, the speech fallbacks, the hands-free ride's
 sequencing, the level check, both conversation back ends, scene writing, two-device sync, and layout at
 four screen sizes. Speech and Claude are stubbed, so real audio and real model replies are not covered.

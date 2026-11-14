@@ -568,3 +568,24 @@ html .kids rt { display: ruby-text; }
 .ktick.on { background: var(--go); border-color: var(--go); color: var(--surface); }
 .ktick i { position: absolute; top: -6px; right: -8px; min-width: 18px; padding: 0 5px; border-radius: 9px; background: var(--ink); color: var(--bg); font: 700 11px/18px var(--font); }
 @media (max-width: 380px) { .kpic.huge { font-size: 100px; } .ktiles.n3 .kpic.big { font-size: 50px; } .kword { font-size: 36px; } }
+
+.kgames.three { grid-template-columns: repeat(3, 1fr); }
+.kgames.three b { font-size: 18px; }
+.ksets.two { grid-template-columns: 1fr 1fr; }
+.ktips { background: var(--surface); border-radius: 14px; padding: 10px 14px; font-size: 14px; color: var(--muted); }
+.ktips summary { cursor: pointer; font-weight: 600; color: var(--ink); }
+.ktips .bullets { padding-top: 10px; }
+.kword.small { font-size: 28px; line-height: 2; text-align: center; }
+.khear.nopy rt { display: none; }
+.kcard.story { padding-block: 18px; }
+.kline-say.now { color: var(--l3); }
+.kcheer .row { width: 100%; text-align: left; background: var(--surface); border-radius: 14px; padding: 12px 14px; }
+.kcheer .kcard { width: 100%; }
+
+.pace { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.bar.clock { height: 10px; border-radius: 5px; }
+.bar.clock i { width: 100%; background: var(--led-amber); }
+.quick-stage { display: flex; flex-direction: column; gap: 12px; }
+
+/* a bar inside a column must not flex away to nothing */
+.bar.clock, .bar.busy { flex: none; }

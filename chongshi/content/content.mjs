@@ -751,9 +751,30 @@ export const KIDS = {
     { id: 'sky', zh: '天上', en: 'Sky and outdoors', pic: '☀️', words: [K('太阳', 'sun', '☀️'), K('月亮', 'moon', '🌙'), K('星星', 'star', '⭐'), K('雨', 'rain', '🌧️'), K('雪', 'snow', '❄️'), K('花', 'flower', '🌸'), K('树', 'tree', '🌳'), K('山', 'mountain', '⛰️')] },
     { id: 'things', zh: '家里', en: 'At home', pic: '🧸', words: [K('球', 'ball', '⚽'), K('书', 'book', '📖'), K('床', 'bed', '🛏️'), K('门', 'door', '🚪'), K('鞋', 'shoe', '👟'), K('帽子', 'hat', '🧢'), K('杯子', 'cup', '🥤'), K('玩具', 'toy', '🧸')] },
     { id: 'feelings', zh: '感觉', en: 'Feelings', pic: '😄', words: [K('开心', 'happy', '😄'), K('难过', 'sad', '😢'), K('生气', 'angry', '😠'), K('累', 'tired', '😴'), K('害怕', 'scared', '😨'), K('饿', 'hungry', '🤤')] },
+    { id: 'wild', zh: '野生动物', en: 'Wild animals', pic: '🦁', words: [K('狮子', 'lion', '🦁'), K('老虎', 'tiger', '🐯'), K('大象', 'elephant', '🐘'), K('猴子', 'monkey', '🐵'), K('长{cháng}颈鹿', 'giraffe', '🦒'), K('斑马', 'zebra', '🦓'), K('蛇', 'snake', '🐍'), K('鳄鱼', 'crocodile', '🐊')] },
+    { id: 'dino', zh: '恐龙', en: 'Dinosaur world', pic: '🦖', words: [K('恐龙', 'dinosaur', '🦕'), K('霸王龙', 'T. rex', '🦖'), K('恐龙蛋', 'dinosaur egg', '🥚'), K('火山', 'volcano', '🌋'), K('骨头', 'bone', '🦴'), K('脚印', 'footprint', '🐾')] },
+    // For a child who is starting to read: the character is the question, and the word is not played until they tap it.
+    { id: 'chars', zh: '汉字', en: 'First characters', pic: '字', read: true, words: [K('山', 'mountain', '⛰️'), K('水', 'water', '💧'), K('火', 'fire', '🔥'), K('人', 'person', '🧍'), K('口', 'mouth', '👄'), K('日', 'sun', '☀️'), K('月', 'moon', '🌙'), K('木', 'tree', '🌳')] },
   ],
   // 动一动: hear it, do it. No picture until they have had a go.
   actions: [K('拍手', 'clap your hands', '👏'), K('跳一跳', 'jump', '🦘'), K('跑步', 'run on the spot', '🏃'), K('坐下', 'sit down', '🪑'), K('站起来', 'stand up', '🧍'), K('转圈', 'spin around', '🔄'), K('摸鼻子', 'touch your nose', '👃'), K('挥手', 'wave', '👋'), K('睡觉', 'go to sleep', '😴'), K('笑一笑', 'smile', '😄'), K('摸头', 'touch your head', '🙆'), K('抱一抱', 'give a hug', '🤗')],
+  // 故事: bedtime picture stories built from words in the sets. One picture and one short sentence a page.
+  // `ask` is a question for the grown-up to put to the children afterwards, with its answer.
+  stories: [
+    { zh: '小恐龙饿了', en: 'The little dinosaur is hungry', pic: '🦕', pages: [K('小恐龙饿了。', 'The little dinosaur is hungry.', '🦕'), K('它吃苹果。', 'It eats an apple.', '🍎'), K('它吃香蕉。', 'It eats a banana.', '🍌'), K('它吃西瓜！', 'It eats a watermelon!', '🍉'), K('小恐龙吃饱了，很开心。', 'The little dinosaur is full, and happy.', '😄'), K('晚安，小恐龙。', 'Good night, little dinosaur.', '😴')], ask: K('小恐龙吃了什么？', 'What did the little dinosaur eat?', '苹果、香蕉、西瓜') },
+    { zh: '月亮在哪里', en: 'Where is the moon?', pic: '🌙', pages: [K('月亮在哪里？', 'Where is the moon?', '❓'), K('在树上吗？不是。', 'Is it in the tree? No.', '🌳'), K('在山上吗？不是。', 'Is it on the mountain? No.', '⛰️'), K('星星说：在这里！', 'The star says: over here!', '⭐'), K('月亮出来了。', 'The moon has come out.', '🌙'), K('晚安，月亮。', 'Good night, moon.', '😴')], ask: K('月亮在树上吗？', 'Was the moon in the tree?', '不是') },
+    { zh: '老虎找朋友', en: 'Tiger looks for a friend', pic: '🐯', pages: [K('老虎想找朋友。', 'Tiger wants to find a friend.', '🐯'), K('猴子，你好！', 'Hello, monkey!', '🐵'), K('大象，你好！', 'Hello, elephant!', '🐘'), K('狮子，你好！', 'Hello, lion!', '🦁'), K('大家都是好朋友。', 'Everyone is good friends.', '🧑‍🤝‍🧑'), K('老虎很开心。', 'Tiger is very happy.', '😄')], ask: K('老虎的朋友是谁？', 'Who are Tiger\'s friends?', '猴子、大象、狮子') },
+    { zh: '下雨了', en: 'It is raining', pic: '🌧️', pages: [K('下雨了。', 'It is raining.', '🌧️'), K('小狗回家。', 'The little dog goes home.', '🐶'), K('小猫回家。', 'The little cat goes home.', '🐱'), K('大家都在家里。', 'Everyone is at home.', '🏠'), K('太阳出来了！', 'The sun has come out!', '☀️'), K('花开了。', 'The flowers have opened.', '🌸')], ask: K('谁回家了？', 'Who went home?', '小狗和小猫') },
+  ],
+  // 唱一唱: words set to tunes the grown-up already knows, so the grown-up does the singing.
+  songs: [
+    { zh: '两只老虎', en: 'Two tigers', tune: 'Frère Jacques', pic: '🐯', lines: [K('两只老虎，两只老虎，', 'Two tigers, two tigers,'), K('跑得快，跑得快。', 'running fast, running fast.'), K('一只没有耳朵，', 'One has no ears,'), K('一只没有尾巴，', 'one has no tail,'), K('真奇怪，真奇怪。', 'how strange, how strange.')] },
+    { zh: '小星星', en: 'Little star', tune: 'Twinkle, Twinkle, Little Star', pic: '⭐', lines: [K('一闪一闪亮晶晶，', 'Twinkle, twinkle, shining bright,'), K('满天都是小星星。', 'the whole sky is little stars.'), K('挂在天上放光明，', 'Hanging in the sky, giving light,'), K('好像许多小眼睛。', 'like so many little eyes.')] },
+    { zh: '头、肩膀、膝盖、脚', en: 'Head, shoulders, knees and toes', tune: 'Head, Shoulders, Knees and Toes', pic: '🙆', lines: [K('头、肩膀、膝盖、脚，', 'Head, shoulders, knees, feet,'), K('膝盖、脚，膝盖、脚。', 'knees, feet, knees, feet.'), K('头、肩膀、膝盖、脚，', 'Head, shoulders, knees, feet,'), K('眼睛、耳朵、鼻子、嘴。', 'eyes, ears, nose, mouth.')] },
+    { zh: '祝你生日快乐', en: 'Happy birthday', tune: 'Happy Birthday to You', pic: '🎂', lines: [K('祝你生日快乐，', 'Happy birthday to you,'), K('祝你生日快乐，', 'happy birthday to you,'), K('祝你生日快乐，', 'happy birthday to you,'), K('祝你生日快乐！', 'happy birthday to you!')] },
+  ],
+  // 寻宝: a treasure hunt around the house. The app says what to find; the children run and find it.
+  hunt: [K('找红色的东西！', 'Find something red!', '🔴'), K('找蓝色的东西！', 'Find something blue!', '🔵'), K('找黄色的东西！', 'Find something yellow!', '🟡'), K('找绿色的东西！', 'Find something green!', '🟢'), K('找一本书！', 'Find a book!', '📖'), K('找一个球！', 'Find a ball!', '⚽'), K('找一只鞋！', 'Find a shoe!', '👟'), K('找一个杯子！', 'Find a cup!', '🥤'), K('找一个玩具！', 'Find a toy!', '🧸'), K('找一扇门！', 'Find a door!', '🚪'), K('找爸爸或者妈妈！', 'Find Dad or Mum!', '🤗'), K('找你的床！', 'Find your bed!', '🛏️')],
   // 家里说: what the grown-up says, routine by routine. Used every day, these do more than any game.
   home: [
     { zh: '早上', en: 'Morning', lines: [K('起床了！', 'Time to get up!'), K('早上好！', 'Good morning!'), K('刷牙，洗脸。', 'Brush your teeth, wash your face.'), K('穿衣服。', 'Get dressed.'), K('吃早饭了！', 'Breakfast time!')] },

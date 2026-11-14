@@ -18,6 +18,10 @@ const pic = (w, cls = '') => (w.pic[0] === '#'
   ? h('span', { class: 'kpic swatch ' + cls, style: { background: w.pic } })
   : h('span', { class: 'kpic ' + (/^\d+$/.test(w.pic) ? 'num ' : '') + cls, 'aria-hidden': 'true' }, w.pic));
 const players = () => (who === 2 ? [0, 1] : [who]);
+const tile = (hash, emoji, zhLabel, label) => h('button', { type: 'button', onclick: () => go(hash) }, h('span', { class: 'kpic' }, emoji), h('b', { lang: 'zh-CN' }, zhLabel), h('small', null, label));
+// Every word a current player has found at least once, for the mixed review.
+const metWords = () => KIDS.sets.filter((st) => !st.read).flatMap((st) => st.words).filter((w) => players().some((i) => store.kids().p[i].w[w.zh]));
+const mixSet = () => ({ id: 'mix', zh: '混一混', en: 'Mix-up', pic: '🎲', words: store.shuffle(metWords()).slice(0, 12) });
 const top = (title, back) => h('div', { class: 'ktop' },
   h('button', { class: 'iconbtn', type: 'button', 'aria-label': 'Back', onclick: () => go(back) }, icon(back === 'home' ? 'x' : 'back')), h('b', { lang: 'zh-CN' }, title));
 
@@ -50,17 +54,29 @@ export function kidsHub() {
       h('div', { class: 'kwho', role: 'group', 'aria-label': 'Who is playing' }, [[0, k.names[0]], [1, k.names[1]], [2, 'Both']].map(([v, label]) =>
         h('button', { type: 'button', 'aria-pressed': String(who === v), onclick: () => { who = v; sfx('tap'); paint(); } }, label))),
       train(0), train(1),
-      h('div', { class: 'kgames' },
-        h('button', { type: 'button', onclick: () => go('kids-move') }, h('span', { class: 'kpic' }, '🤸'), h('b', { lang: 'zh-CN' }, '动一动'), h('small', null, 'Hear it, do it')),
-        h('button', { type: 'button', onclick: () => go('kids-home') }, h('span', { class: 'kpic' }, '🏠'), h('b', { lang: 'zh-CN' }, '家里说'), h('small', null, 'For the grown-up'))),
+      h('div', { class: 'kgames three' },
+        tile('kids-stories', '📖', '故事', 'Bedtime stories'),
+        tile('kids-songs', '🎵', '唱一唱', 'Sing together'),
+        tile('kids-move', '🤸', '动一动', 'Hear it, do it'),
+        tile('kids-hunt', '🔍', '寻宝', 'Treasure hunt'),
+        metWords().length >= 6 ? tile('kids-set-mix', '🎲', '混一混', 'Words you know') : null,
+        tile('kids-home', '🏠', '家里说', 'For the grown-up')),
+      h('details', { class: 'ktips' }, h('summary', null, 'For the grown-up: how to get the most from this'),
+        h('ul', { class: 'bullets' },
+          h('li', null, 'Play it with them. Children learn more from an app used with a parent than alone, so say each word with them and talk about the picture.'),
+          h('li', null, 'Keep it to five or ten minutes, and stop while it is still fun.'),
+          h('li', null, 'Come back to old sets. 混一混 mixes words they have already met, which is what makes them stick.'),
+          h('li', null, 'Use the words away from the screen: 家里说 at breakfast and bedtime, 寻宝 around the house.'))),
       h('p', { class: 'khint' }, 'Pick a picture set. First you meet the words, then you find them.'),
       h('div', { class: 'ksets' }, KIDS.sets.map((s) => h('button', { type: 'button', class: players().every((i) => store.kidKnows(i, s)) ? 'known' : '', onclick: () => go('kids-set-' + s.id) },
         pic(s), h('b', { lang: 'zh-CN' }, s.zh), h('small', null, s.en)))));
   }
   function rename(i) {
     const input = h('input', { id: 'kid-name', type: 'text', value: store.kids().names[i], maxlength: 12, 'aria-label': 'Name' });
+    const easy = h('input', { type: 'checkbox', id: 'kid-easy', checked: store.kids().p[i].easy || null });
     fill(el, top('一起学', 'kids'), h('div', { class: 'kcheer' }, h('p', null, 'What should this player be called?'), input,
-      h('div', { class: 'actions' }, button('Save', 'primary', () => { store.kidName(i, input.value); paint(); }), button('Cancel', 'ghost', paint))));
+      h('label', { class: 'row', for: 'kid-easy' }, h('span', null, h('b', null, 'Easier rounds'), h('small', null, 'Two pictures to choose from, then three. For a younger child.')), easy),
+      h('div', { class: 'actions' }, button('Save', 'primary', () => { store.kidName(i, input.value); store.kidEasy(i, easy.checked); paint(); }), button('Cancel', 'ghost', paint))));
     input.focus();
   }
   paint();
@@ -69,8 +85,8 @@ export function kidsHub() {
 
 /* ---------- a set: meet the words, then choose a game ---------- */
 function setView(id) {
-  const set = KIDS.sets.find((s) => s.id === id);
-  if (!set) return kidsHub();
+  const set = id === 'mix' ? mixSet() : KIDS.sets.find((s) => s.id === id);
+  if (!set || !set.words.length) return kidsHub();
   const el = h('div', { class: 'kids' });
   let alive = true;
   let turn = players()[0];
@@ -109,7 +125,8 @@ function setView(id) {
         const fresh = players().filter((i, k) => !before[k] && store.kidKnows(i, set));
         return cheer(el, 1, fresh.length ? `${fresh.map((i) => store.kids().names[i]).join(' and ')} added ${set.pic} to the train!` : null, 'Play again', find);
       }
-      const size = Math.min(set.words.length, n < 2 ? 2 : n < 5 ? 3 : 4);
+      const easy = store.kids().p[turn].easy;
+      const size = Math.min(set.words.length, easy ? (n < 4 ? 2 : 3) : n < 2 ? 2 : n < 5 ? 3 : 4);
       const options = store.shuffle([w, ...store.shuffle(set.words.filter((x) => x !== w)).slice(0, size - 1)]);
       let locked = false;
       const tiles = options.map((o) => h('button', { class: 'ktile', type: 'button', 'aria-label': o.en, 'data-word': o.zh, onclick: async () => {
@@ -128,10 +145,11 @@ function setView(id) {
         round();
       } }, pic(o, 'big')));
       fill(el, top(set.zh, 'kids'), turnBadge(turn),
-        h('button', { class: 'khear', type: 'button', 'aria-label': 'Hear it again', onclick: () => say(w.zh) }, icon('sound'), zh(w.zh, { cls: 'kword' })),
+        h('button', { class: 'khear' + (set.read ? ' nopy' : ''), type: 'button', 'aria-label': 'Hear it', onclick: () => say(w.zh) }, icon('sound'), zh(w.zh, { cls: 'kword' })),
+        set.read ? h('p', { class: 'khint' }, 'Read it first. Tap the speaker to check.') : null,
         h('div', { class: 'ktiles n' + size }, tiles),
         h('div', { class: 'kdots', 'aria-hidden': 'true' }, queue.map((_, i) => h('i', { class: i < n ? 'on' : '' }))));
-      say(w.zh);
+      if (!set.read) say(w.zh);
     }
     round();
   }
@@ -181,7 +199,7 @@ function setView(id) {
     paint();
   }
 
-  const fresh = players().some((i) => !set.words.some((w) => store.kids().p[i].w[w.zh]));
+  const fresh = id !== 'mix' && players().some((i) => !set.words.some((w) => store.kids().p[i].w[w.zh]));
   if (fresh) meet(0); else menu();
   return { el, title: set.zh, immersive: true, light: true, destroy: () => { alive = false; stop(); } };
 }
@@ -229,8 +247,103 @@ function homeView() {
   return { el, title: '家里说', immersive: true, light: true, destroy: stop };
 }
 
+/* ---------- 寻宝: run and find it ---------- */
+function huntView() {
+  const el = h('div', { class: 'kids' });
+  let alive = true;
+  let turn = players()[0];
+  function run() {
+    const queue = store.shuffle(KIDS.hunt).slice(0, 8);
+    let n = 0;
+    async function round() {
+      const q = queue[n];
+      if (!q) { players().forEach((i) => store.kidStar(i, 1)); store.markDay(); return cheer(el, 1, null, 'Again', run); }
+      const reveal = h('span', { class: 'kpic huge hidden' }, q.pic);
+      fill(el, top('寻宝', 'kids'), turnBadge(turn),
+        h('button', { class: 'kcard', type: 'button', 'aria-label': 'Hear it again', onclick: () => say(q.zh) }, reveal, zh(q.zh, { cls: 'kword small' }), h('small', null, q.en)),
+        h('p', { class: 'khint' }, 'Off they go! The picture is a clue if they need one.'),
+        h('div', { class: 'actions' }, button('找到了 · Found it!', 'primary big', () => { stop(); sfx('good'); n++; const ps = players(); turn = ps[(ps.indexOf(turn) + 1) % ps.length]; round(); }, 'check')),
+        h('div', { class: 'kdots', 'aria-hidden': 'true' }, queue.map((_, i) => h('i', { class: i < n ? 'on' : '' }))));
+      await say(q.zh);
+      await sleep(2500);
+      if (alive) reveal.classList.remove('hidden');
+    }
+    round();
+  }
+  run();
+  return { el, title: '寻宝', immersive: true, light: true, destroy: () => { alive = false; stop(); } };
+}
+
+/* ---------- 故事: bedtime picture stories ---------- */
+function storiesView(arg) {
+  const el = h('div', { class: 'kids' });
+  let alive = true;
+  const story = KIDS.stories[arg];
+  function list() {
+    fill(el, top('故事', 'kids'),
+      h('p', { class: 'khint wide' }, 'One picture and one sentence a page. Read it to them, or let the voice read and say it together.'),
+      h('div', { class: 'ksets two' }, KIDS.stories.map((st, i) => h('button', { type: 'button', onclick: () => go('kids-stories-' + i) }, h('span', { class: 'kpic' }, st.pic), h('b', { lang: 'zh-CN' }, st.zh), h('small', null, st.en)))));
+  }
+  function page(i) {
+    const pg = story.pages[i];
+    if (!pg) return end();
+    fill(el, top(story.zh, 'kids-stories'),
+      h('button', { class: 'kcard story', type: 'button', 'aria-label': 'Hear it again', onclick: () => say(pg.zh) }, h('span', { class: 'kpic huge' }, pg.pic), zh(pg.zh, { cls: 'kword small' }), h('small', null, pg.en)),
+      h('div', { class: 'actions' }, button(i < story.pages.length - 1 ? 'Next page' : 'The end', 'primary big', () => { stop(); page(i + 1); }, 'arrow')),
+      h('div', { class: 'kdots', 'aria-hidden': 'true' }, story.pages.map((_, k) => h('i', { class: k <= i ? 'on' : '' }))));
+    say(pg.zh);
+  }
+  function end() {
+    players().forEach((i) => store.kidStar(i, 1));
+    store.markDay();
+    const answer = h('p', { class: 'knew', hidden: true }, zh(story.ask.pic));
+    fill(el, top(story.zh, 'kids-stories'),
+      h('div', { class: 'kcheer' }, h('div', { class: 'kstars', 'aria-hidden': 'true' }, '🌙'),
+        h('p', { class: 'khint wide' }, 'Ask them:'),
+        h('button', { class: 'kcard', type: 'button', onclick: () => say(story.ask.zh) }, zh(story.ask.zh, { cls: 'kword small' }), h('small', null, story.ask.en)),
+        answer,
+        h('div', { class: 'actions' }, button('Show the answer', 'ghost', () => { answer.hidden = false; say(story.ask.pic); }), button('Read it again', 'ghost', () => page(0), 'again'), button('晚安 · Good night', 'primary', () => go('kids')))));
+  }
+  if (story) page(0); else list();
+  return { el, title: '故事', immersive: true, light: true, destroy: () => { alive = false; stop(); } };
+}
+
+/* ---------- 唱一唱: songs to tunes the grown-up knows ---------- */
+function songsView(arg) {
+  const el = h('div', { class: 'kids' });
+  let alive = true;
+  let playing = 0;
+  const song = KIDS.songs[arg];
+  function list() {
+    fill(el, top('唱一唱', 'kids'),
+      h('p', { class: 'khint wide' }, 'You know these tunes already, so you do the singing. Tap a line to hear how it is said.'),
+      h('div', { class: 'ksets two' }, KIDS.songs.map((sg, i) => h('button', { type: 'button', onclick: () => go('kids-songs-' + i) }, h('span', { class: 'kpic' }, sg.pic), h('b', { lang: 'zh-CN' }, sg.zh), h('small', null, sg.tune)))));
+  }
+  function show() {
+    const rows = song.lines.map((l) => h('button', { class: 'kline-say', type: 'button', onclick: () => { playing++; say(l.zh); } }, zh(l.zh), h('small', null, l.en)));
+    async function all() {
+      const mine = ++playing;
+      for (const [i, l] of song.lines.entries()) {
+        rows.forEach((r, k) => r.classList.toggle('now', k === i));
+        await say(l.zh);
+        if (!alive || mine !== playing) break;
+      }
+      rows.forEach((r) => r.classList.remove('now'));
+    }
+    fill(el, top(song.zh, 'kids-songs'),
+      h('p', { class: 'khint wide' }, 'Sing it to the tune of ', h('b', null, song.tune), '.'),
+      h('section', { class: 'kroutine' }, rows.map((r) => h('div', { class: 'kline' }, r))),
+      h('div', { class: 'actions' }, button('Hear every line', 'ghost', all, 'play'), button('We sang it!', 'primary', () => { playing++; stop(); players().forEach((i) => store.kidStar(i, 1)); store.markDay(); cheer(el, 1, null, 'Sing it again', show); }, 'check')));
+  }
+  if (song) show(); else list();
+  return { el, title: '唱一唱', immersive: true, light: true, destroy: () => { alive = false; stop(); } };
+}
+
 export function kidsView(arg) {
   if (arg === 'move') return moveView();
+  if (arg === 'hunt') return huntView();
+  const pick = arg && arg.match(/^(stories|songs)(?:-(\d+))?$/);
+  if (pick) return (pick[1] === 'stories' ? storiesView : songsView)(pick[2] === undefined ? -1 : +pick[2]);
   if (arg === 'home') return homeView();
   if (arg && arg.startsWith('set-')) return setView(arg.slice(4));
   return kidsHub();

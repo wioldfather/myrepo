@@ -70,7 +70,14 @@ const chengyu = CHENGYU.map((y) => {
 });
 const talks = TALKS.map((t) => ({ ...t, zh: register(t.zh) }));
 const k = (x) => ({ ...x, zh: register(x.zh) });
-const kids = { sets: KIDS.sets.map((st) => ({ ...k(st), words: st.words.map(k) })), actions: KIDS.actions.map(k), home: KIDS.home.map((r) => ({ ...k(r), lines: r.lines.map(k) })) };
+const kids = {
+  sets: KIDS.sets.map((st) => ({ ...k(st), words: st.words.map(k) })),
+  actions: KIDS.actions.map(k),
+  home: KIDS.home.map((r) => ({ ...k(r), lines: r.lines.map(k) })),
+  stories: KIDS.stories.map((st) => ({ ...k(st), pages: st.pages.map(k), ask: { ...k(st.ask), pic: register(st.ask.pic) } })),
+  songs: KIDS.songs.map((sg) => ({ ...k(sg), lines: sg.lines.map(k) })),
+  hunt: KIDS.hunt.map(k),
+};
 const reg = REGISTER.map((r, i) => ({ id: 'r' + (i + 1), sit: r.sit, opts: r.opts.map((o) => ({ ...o, zh: register(o.zh) })) }));
 
 // sanity: unique ids, tiles rebuild their sentence
