@@ -734,3 +734,33 @@ export const TALKS = [
   T('wellbeing', '你还好吗', 'Checking in', 'She has gone quiet. Find out how she is, gently.', 'You are 小雨. You have been sleeping badly for two weeks, the job search is going poorly, and you have not told your family. You answer "还好" at first. You open up only if the advisor is gentle and does not rush to solutions. You are hesitant about counselling because it might make you look weak.'),
   T('free', '自由聊', 'Free chat', 'No scenario. Talk about anything.', 'You are 李明, a warm, curious friend from Shanghai in your thirties who works in marketing. Chat about whatever the learner brings up: their day, their memories of Shanghai, food, work, travel, the news. Ask about their life and share small details of your own.'),
 ];
+
+// 一起学: for two young beginners playing with a parent. Pictures are emoji, so there is nothing to download
+// and nothing to read: a child hears the word and taps the picture.
+const K = (zh, en, pic) => ({ zh, en, pic });
+export const KIDS = {
+  sets: [
+    { id: 'animals', zh: '动物', en: 'Animals', pic: '🐶', words: [K('狗', 'dog', '🐶'), K('猫', 'cat', '🐱'), K('鱼', 'fish', '🐟'), K('鸟', 'bird', '🐦'), K('马', 'horse', '🐴'), K('牛', 'cow', '🐮'), K('兔子', 'rabbit', '🐰'), K('熊猫', 'panda', '🐼')] },
+    { id: 'fruit', zh: '水果', en: 'Fruit', pic: '🍎', words: [K('苹果', 'apple', '🍎'), K('香蕉', 'banana', '🍌'), K('西瓜', 'watermelon', '🍉'), K('草莓', 'strawberry', '🍓'), K('葡萄', 'grapes', '🍇'), K('橙子', 'orange', '🍊')] },
+    { id: 'food', zh: '吃的', en: 'Food', pic: '🍚', words: [K('米饭', 'rice', '🍚'), K('面条', 'noodles', '🍜'), K('饺子', 'dumplings', '🥟'), K('鸡蛋', 'egg', '🥚'), K('牛奶', 'milk', '🥛'), K('水', 'water', '💧'), K('面包', 'bread', '🍞'), K('蛋糕', 'cake', '🍰')] },
+    { id: 'colors', zh: '颜色', en: 'Colours', pic: '🎨', words: [K('红色', 'red', '#E53935'), K('黄色', 'yellow', '#FDD835'), K('蓝色', 'blue', '#1E88E5'), K('绿色', 'green', '#43A047'), K('黑色', 'black', '#212121'), K('白色', 'white', '#FAFAFA')] },
+    { id: 'numbers', zh: '数字', en: 'Numbers', pic: '🔢', words: [K('一', 'one', '1'), K('二', 'two', '2'), K('三', 'three', '3'), K('四', 'four', '4'), K('五', 'five', '5'), K('六', 'six', '6'), K('七', 'seven', '7'), K('八', 'eight', '8'), K('九', 'nine', '9'), K('十', 'ten', '10')] },
+    { id: 'family', zh: '家人', en: 'Family', pic: '👨‍👩‍👧‍👦', words: [K('爸爸', 'dad', '👨'), K('妈妈', 'mum', '👩'), K('爷爷', 'grandpa', '👴'), K('奶奶', 'grandma', '👵'), K('宝宝', 'baby', '👶'), K('朋友', 'friend', '🧑‍🤝‍🧑')] },
+    { id: 'body', zh: '身体', en: 'Body', pic: '👀', words: [K('眼睛', 'eyes', '👀'), K('耳朵', 'ear', '👂'), K('鼻子', 'nose', '👃'), K('嘴巴', 'mouth', '👄'), K('手', 'hand', '✋'), K('脚', 'foot', '🦶'), K('牙齿', 'teeth', '🦷')] },
+    { id: 'go', zh: '车', en: 'Things that go', pic: '🚗', words: [K('汽车', 'car', '🚗'), K('火车', 'train', '🚆'), K('飞机', 'plane', '✈️'), K('船', 'boat', '⛵'), K('自行车', 'bicycle', '🚲'), K('公共汽车', 'bus', '🚌'), K('地铁', 'metro', '🚇')] },
+    { id: 'sky', zh: '天上', en: 'Sky and outdoors', pic: '☀️', words: [K('太阳', 'sun', '☀️'), K('月亮', 'moon', '🌙'), K('星星', 'star', '⭐'), K('雨', 'rain', '🌧️'), K('雪', 'snow', '❄️'), K('花', 'flower', '🌸'), K('树', 'tree', '🌳'), K('山', 'mountain', '⛰️')] },
+    { id: 'things', zh: '家里', en: 'At home', pic: '🧸', words: [K('球', 'ball', '⚽'), K('书', 'book', '📖'), K('床', 'bed', '🛏️'), K('门', 'door', '🚪'), K('鞋', 'shoe', '👟'), K('帽子', 'hat', '🧢'), K('杯子', 'cup', '🥤'), K('玩具', 'toy', '🧸')] },
+    { id: 'feelings', zh: '感觉', en: 'Feelings', pic: '😄', words: [K('开心', 'happy', '😄'), K('难过', 'sad', '😢'), K('生气', 'angry', '😠'), K('累', 'tired', '😴'), K('害怕', 'scared', '😨'), K('饿', 'hungry', '🤤')] },
+  ],
+  // 动一动: hear it, do it. No picture until they have had a go.
+  actions: [K('拍手', 'clap your hands', '👏'), K('跳一跳', 'jump', '🦘'), K('跑步', 'run on the spot', '🏃'), K('坐下', 'sit down', '🪑'), K('站起来', 'stand up', '🧍'), K('转圈', 'spin around', '🔄'), K('摸鼻子', 'touch your nose', '👃'), K('挥手', 'wave', '👋'), K('睡觉', 'go to sleep', '😴'), K('笑一笑', 'smile', '😄'), K('摸头', 'touch your head', '🙆'), K('抱一抱', 'give a hug', '🤗')],
+  // 家里说: what the grown-up says, routine by routine. Used every day, these do more than any game.
+  home: [
+    { zh: '早上', en: 'Morning', lines: [K('起床了！', 'Time to get up!'), K('早上好！', 'Good morning!'), K('刷牙，洗脸。', 'Brush your teeth, wash your face.'), K('穿衣服。', 'Get dressed.'), K('吃早饭了！', 'Breakfast time!')] },
+    { zh: '出门', en: 'Heading out', lines: [K('穿鞋。', 'Shoes on.'), K('我们走吧！', "Let's go!"), K('拉着我的手。', 'Hold my hand.'), K('小心！', 'Careful!'), K('上车。', 'In the car.')] },
+    { zh: '吃饭', en: 'Mealtimes', lines: [K('洗手，吃饭了！', 'Wash your hands, time to eat!'), K('好吃吗？', 'Is it tasty?'), K('还要吗？', 'Want some more?'), K('慢慢吃。', 'Eat slowly.'), K('吃饱了吗？', 'Are you full?')] },
+    { zh: '玩', en: 'Playing', lines: [K('我们一起玩吧！', "Let's play together!"), K('轮到你了。', "It's your turn."), K('真棒！', 'Well done!'), K('再来一次！', 'One more time!'), K('收拾玩具。', 'Tidy up the toys.')] },
+    { zh: '晚上', en: 'Bedtime', lines: [K('洗澡了。', 'Bath time.'), K('该睡觉了。', 'Time for bed.'), K('讲个故事吧。', "Let's read a story."), K('晚安，宝贝。', 'Good night, sweetheart.'), K('我爱你。', 'I love you.')] },
+    { zh: '抱抱', en: 'Comfort and praise', lines: [K('怎么了？', "What's wrong?"), K('没关系。', "It's all right."), K('抱抱。', 'Give me a hug.'), K('你真勇敢！', "You're so brave!"), K('谢谢你帮忙。', 'Thank you for helping.')] },
+  ],
+};

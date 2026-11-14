@@ -1,5 +1,6 @@
 // Fake speech synthesis for headless runs: two Mandarin voices + one English, utterances "finish" after a short delay.
 (() => {
+  window.__NO_CLIPS = !window.__WITH_CLIPS; // most tests exercise the device-voice path
   const voices = window.__VOICES || [
     { name: 'Tingting', lang: 'zh-CN', voiceURI: 'tt', default: false, localService: true },
     { name: 'Google 普通话', lang: 'zh-CN', voiceURI: 'gg', default: false, localService: false },

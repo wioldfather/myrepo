@@ -4,7 +4,8 @@ import { createRequire } from 'node:module';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { SCENES, CHENGYU, REGISTER, TALKS, PY } from '../js/content.gen.js';
+import { SCENES, CHENGYU, REGISTER, TALKS, KIDS, PY } from '../js/content.gen.js';
+import { CLIPS } from '../js/audio.gen.js';
 import { WORDS } from '../js/words.gen.js';
 
 const require = createRequire(import.meta.url);
@@ -270,7 +271,7 @@ await test('no Mandarin voice: scenes, dictation and ride degrade clearly', { sc
   assert(await page.locator('.ride .note.warn').isVisible(), 'ride explains why');
 });
 
-await test('a browser that accepts speech but stays silent is caught', { tts: false, scripts: [NO_MIC, SILENT_TTS] }, async (page) => {
+await test('a browser that accepts speech but stays silent is caught', { tts: false, scripts: ['window.__NO_CLIPS = true;', NO_MIC, SILENT_TTS] }, async (page) => {
   await go(page, 'scene-s1');
   await page.click('.bigplay');
   await page.waitForSelector('.note.warn', { timeout: 9000 });
@@ -581,6 +582,92 @@ await test('progress syncs between two devices and merges, not overwrites', {}, 
   const cards = Object.keys((await state(phone)).cards);
   assert(cards.length === 4 && cards.some((k) => k.startsWith('y:')), 'the phone holds its own three cards plus the idiom from the laptop, got ' + cards.length);
   await phone.context().close(); await laptop.context().close();
+});
+
+await test('children: meet the words, find the picture, take turns, earn stars', {}, async (page) => {
+  await page.evaluate(() => { window.__SPEAK_MS = 5; });
+  await page.click('.together');
+  await page.waitForSelector('.ksets');
+  assert((await page.locator('.ksets button').count()) === KIDS.sets.length, 'all picture sets shown');
+  assert((await page.locator('.kwho button[aria-pressed="true"]').textContent()) === 'Both', 'both children play by default');
+  const set = KIDS.sets[0];
+  await page.locator('.ksets button').first().click();
+  // meet each word; turns alternate
+  const turns = [];
+  for (let i = 0; i < set.words.length; i++) {
+    await page.waitForSelector('.kcard');
+    turns.push(await page.locator('.kturn').textContent());
+    assert(await page.locator('.kcard rt').first().isVisible(), 'pinyin always shown for the grown-up');
+    await page.click('.kids .primary');
+  }
+  assert(turns[0] === 'Kai' && turns[1] === 'Swae' && turns[2] === 'Kai', 'turns alternate: ' + turns.slice(0, 3).join(','));
+  await page.click('text=找一找');
+  let sizes = [];
+  for (let n = 0; n < 8; n++) {
+    await page.waitForFunction((k) => document.querySelectorAll('.kdots i.on').length === k && document.querySelector('.ktile'), n);
+    const word = await plain(page.locator('.khear .zh'));
+    sizes.push(await page.locator('.ktile').count());
+    if (n === 0) { // a wrong tap is not punished: the tile wobbles and the round stays open
+      await page.locator(`.ktile:not([data-word="${word}"])`).first().click();
+      assert(await page.locator('.ktile.wobble').count(), 'wrong tile wobbles');
+    }
+    await page.click(`.ktile[data-word="${word}"]`);
+  }
+  await page.waitForSelector('.kstars');
+  assert(sizes[0] === 2 && sizes[3] === 3 && sizes[7] === 4, 'choices grow from two to four: ' + sizes.join(''));
+  let k = (await state(page)).kids;
+  assert(k.p[0].stars === 1 && k.p[1].stars === 1, 'each child earned a star');
+  assert(Object.keys(k.p[0].w).length + Object.keys(k.p[1].w).length === 8, 'finds are credited to whoever’s turn it was');
+  // one child alone, memory pairs
+  await page.click('text=Pick something else');
+  await page.click('.kwho button >> nth=0');
+  await page.locator('.ksets button').nth(1).click();
+  for (let i = 0; i < KIDS.sets[1].words.length; i++) { await page.waitForSelector('.kcard'); await page.click('.kids .primary'); }
+  await page.click('text=配对');
+  await page.waitForSelector('.kflip');
+  assert((await page.locator('.kflip').count()) === 12, 'six pairs');
+  await noOverflow(page, 'pairs');
+  // action game and the grown-up's phrases
+  await go(page, 'kids-move');
+  for (let i = 0; i < 8; i++) { await page.waitForSelector('.kcard'); await page.click('.kids .primary'); }
+  await page.waitForSelector('.kstars');
+  await go(page, 'kids-home');
+  assert((await page.locator('.kline').count()) === 30, 'thirty routine phrases');
+  await page.locator('.ktick').first().click();
+  k = (await state(page)).kids;
+  assert(k.said[KIDS.home[0].lines[0].zh] === 1 && k.p[0].stars === 2, 'phrase use and stars recorded');
+  // rename a player; it survives a reload
+  await go(page, 'kids');
+  await page.locator('.kname').first().click();
+  await page.fill('#kid-name', 'Kai-Kai');
+  await page.click('text=Save');
+  await page.reload();
+  await page.waitForSelector('.ktrain');
+  assert((await page.locator('.kname').first().textContent()) === 'Kai-Kai', 'name kept');
+  for (const h of ['kids', 'kids-set-colors', 'kids-set-numbers', 'kids-home']) { await go(page, h); await noOverflow(page, h); }
+});
+
+await test('recorded lines play from audio files, with the device voice for everything else', { scripts: ['window.__WITH_CLIPS = true;', FAKE_TTS, NO_MIC], tts: false }, async (page) => {
+  const sc = SCENES[0];
+  const recorded = sc.lines.filter((l) => CLIPS[l.zh]);
+  assert(recorded.length >= 5, 'scene one has recordings');
+  await page.evaluate(() => {
+    window.__played = [];
+    const play = HTMLMediaElement.prototype.play;
+    HTMLMediaElement.prototype.play = function () { if (!this.src.startsWith('data:')) window.__played.push({ at: +this.currentTime.toFixed(2), rate: this.playbackRate }); return play.call(this); };
+  });
+  await go(page, 'scene-' + sc.id);
+  await page.click('.steps button:nth-child(3)');
+  const first = sc.lines.findIndex((l) => CLIPS[l.zh]);
+  await page.locator('.thread .bub').nth(first).click();
+  await page.waitForFunction(() => window.__played.length === 1, null, { timeout: 8000 });
+  const p = await page.evaluate(() => window.__played[0]);
+  assert(Math.abs(p.at - CLIPS[sc.lines[first].zh][1]) < 0.05, `seeks to the line: ${p.at} vs ${CLIPS[sc.lines[first].zh][1]}`);
+  assert((await page.evaluate(() => window.__spoken.length)) === 0, 'the device voice stays silent for a recorded line');
+  const dur = await page.evaluate(() => document.createElement('audio').canPlayType('audio/mpeg'));
+  assert(dur !== '', 'browser can decode the recordings');
+  await page.locator('.chunks .say').first().click(); // phrases not recorded yet fall back to the device voice, recorded ones play
+  await page.waitForFunction(() => window.__played.length + window.__spoken.length === 2, null, { timeout: 8000 });
 });
 
 for (const [w, hgt] of [[360, 640], [390, 844], [768, 1024], [1280, 800]]) {

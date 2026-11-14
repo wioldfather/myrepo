@@ -7,7 +7,7 @@ import { writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { pinyin } from 'pinyin-pro';
-import { LINES, SCENES, CHENGYU, REGISTER, TALKS } from '../content/content.mjs';
+import { LINES, SCENES, CHENGYU, REGISTER, TALKS, KIDS } from '../content/content.mjs';
 
 const HAN = /[一-鿿]/;
 const OVERRIDE = /([一-鿿])\{([^}]+)\}/g;
@@ -69,6 +69,8 @@ const chengyu = CHENGYU.map((y) => {
   return { ...y, id: 'y:' + zh, zh, clue: register(y.clue) };
 });
 const talks = TALKS.map((t) => ({ ...t, zh: register(t.zh) }));
+const k = (x) => ({ ...x, zh: register(x.zh) });
+const kids = { sets: KIDS.sets.map((st) => ({ ...k(st), words: st.words.map(k) })), actions: KIDS.actions.map(k), home: KIDS.home.map((r) => ({ ...k(r), lines: r.lines.map(k) })) };
 const reg = REGISTER.map((r, i) => ({ id: 'r' + (i + 1), sit: r.sit, opts: r.opts.map((o) => ({ ...o, zh: register(o.zh) })) }));
 
 // sanity: unique ids, tiles rebuild their sentence
@@ -102,6 +104,7 @@ const out =
   `export const CHENGYU = ${JSON.stringify(chengyu)};\n` +
   `export const REGISTER = ${JSON.stringify(reg)};\n` +
   `export const TALKS = ${JSON.stringify(talks)};\n` +
+  `export const KIDS = ${JSON.stringify(kids)};\n` +
   `export const PY = ${JSON.stringify(PY)};\n` +
   `export const HOMO = ${JSON.stringify(HOMO)};\n`;
 const dest = join(dirname(fileURLToPath(import.meta.url)), '..', 'js', 'content.gen.js');

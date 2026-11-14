@@ -13,6 +13,7 @@ import { talkHub, talkView } from './talk.js';
 import { apiKey, setApiKey } from './llm.js';
 import { composeView } from './compose.js';
 import { startSync } from './sync.js';
+import { kidsView } from './kids.js';
 
 const $ = (id) => document.getElementById(id);
 const lineOf = (scene) => LINES.find((l) => l.id === scene.line);
@@ -75,6 +76,11 @@ function home() {
         h('span', { class: 'dep-info' }, 'Talk with Claude as a student, a parent or an alum.'),
         h('span', { class: 'dep-go' }, icon('arrow')))),
 
+    h('button', { class: 'together', type: 'button', onclick: () => go('kids') },
+      h('span', { class: 'kpic', 'aria-hidden': 'true' }, '🚂'),
+      h('span', { class: 'together-text' }, h('b', null, h('span', { lang: 'zh-CN' }, '一起学'), ' Learn together'), h('span', null, `${store.kids().names.join(' and ')}: picture games, action games, and what to say at home.`)),
+      h('span', { class: 'dep-go' }, icon('arrow'))),
+
     h('section', { class: 'stats' },
       h('div', null, h('span', { class: 'stat-k' }, h('span', { lang: 'zh-CN' }, '本周'), ' This week'),
         h('span', { class: 'punch', 'aria-label': `${st.week} of 3 rides this week` }, [0, 1, 2].map((i) => h('i', { class: i < st.week ? 'on' : '' })), st.week > 3 ? h('small', null, '+' + (st.week - 3)) : null)),
@@ -126,6 +132,7 @@ const routes = {
   ride: rideView,
   level: levelView,
   compose: composeView,
+  kids: kidsView,
   talk: (arg) => (arg ? talkView(arg) : talkHub()),
 };
 const TABS = [['home', '今日', 'Today', 'home'], ['scenes', '场景', 'Scenes', 'scenes'], ['talk', '对话', 'Talk', 'mic'], ['recall', '复习', 'Recall', 'recall'], ['games', '游戏', 'Puzzles', 'games']];
@@ -153,13 +160,14 @@ function route() {
   current = view;
   currentName = name;
   document.body.classList.toggle('immersive', !!view.immersive);
+  document.body.classList.toggle('kidmode', !!view.light);
   $('t-zh').textContent = view.title;
   $('t-en').textContent = view.sub || '';
   $('back').hidden = !view.back;
   $('back').onclick = () => go(view.back);
   $('leg').hidden = !leg;
   $('leg').textContent = leg;
-  const tab = { scene: 'scenes', compose: 'scenes', game: 'games', level: 'home' }[name] || name;
+  const tab = { scene: 'scenes', compose: 'scenes', game: 'games', level: 'home', kids: 'home' }[name] || name;
   for (const a of document.querySelectorAll('#tabs a')) {
     a.classList.toggle('on', a.dataset.tab === tab);
     if (a.dataset.tab === tab) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');

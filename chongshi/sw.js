@@ -1,8 +1,8 @@
 // Offline support. Serves from cache first and refreshes the cache in the background,
 // so a new version shows up on the launch after it was downloaded.
-const CACHE = 'chongshi-v2';
+const CACHE = 'chongshi-v3';
 const SHELL = ['./', 'index.html', 'app.css', 'manifest.webmanifest', 'icon.svg', 'icon-180.png', 'icon-192.png',
-  'js/main.js', 'js/store.js', 'js/audio.js', 'js/ui.js', 'js/journey.js', 'js/scene.js', 'js/recall.js', 'js/games.js', 'js/ride.js', 'js/level.js', 'js/talk.js', 'js/llm.js', 'js/compose.js', 'js/sync.js', 'js/content.gen.js', 'js/words.gen.js'];
+  'js/main.js', 'js/store.js', 'js/audio.js', 'js/ui.js', 'js/journey.js', 'js/scene.js', 'js/recall.js', 'js/games.js', 'js/ride.js', 'js/level.js', 'js/talk.js', 'js/llm.js', 'js/compose.js', 'js/sync.js', 'js/kids.js', 'js/content.gen.js', 'js/words.gen.js', 'js/audio.gen.js'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));

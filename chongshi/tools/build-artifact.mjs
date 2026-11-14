@@ -19,4 +19,5 @@ ${css}</style>
 ${body}
 `);
 cpSync(join(root, 'js'), join(out, 'js'), { recursive: true });
+cpSync(join(root, 'audio'), join(out, 'audio'), { recursive: true, filter: (f) => !f.endsWith('.json') });
 console.log('artifact page written to ' + join(out, 'chongshi.html'));

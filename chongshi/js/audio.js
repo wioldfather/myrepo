@@ -1,6 +1,7 @@
 // Everything that makes or hears sound: speech synthesis, sound effects, speech recognition,
 // microphone recording, and the fuzzy comparison between what was said and the target sentence.
 import { HOMO } from './content.gen.js';
+import { CLIPS } from './audio.gen.js';
 import { settings } from './store.js';
 
 /* ---------- text to speech ---------- */
@@ -70,8 +71,68 @@ export function stop() {
   try { if (synth) synth.cancel(); } catch {}
 }
 
+/* ---------- recorded lines ----------
+   Scene dialogue and phrases have studio-quality recordings: a few files, each holding many lines, with every
+   line's start and end listed in audio.gen.js. A line plays by seeking into its file. Anything without a
+   recording (English cues, questions, Claude's replies, the word bank) falls through to the device voice. */
+const USE_CLIPS = !window.__NO_CLIPS; // tests of the device-voice paths switch recordings off
+export const hasClip = (text) => USE_CLIPS && !!CLIPS[text];
+const files = new Map();
+// Fetched whole and played from memory: works offline once cached, and avoids range requests.
+function clipFile(name) {
+  if (!files.has(name)) {
+    files.set(name, fetch('audio/' + name + '.mp3').then((r) => (r.ok ? r.blob() : null)).then((b) => (b ? URL.createObjectURL(b) : null)).catch(() => null));
+  }
+  return files.get(name);
+}
+// One shared element, started once from a tap (see prime), so later lines may start on their own on iOS.
+const player = typeof Audio === 'function' ? new Audio() : null;
+function playClip([name, start, end], rate) {
+  return new Promise((resolve) => {
+    stop();
+    let done = false;
+    let timer;
+    const me = { fin };
+    function fin(ok) {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      player.pause();
+      player.ontimeupdate = null;
+      if (cur === me) cur = null;
+      resolve(ok);
+    }
+    cur = me;
+    clipFile(name).then((url) => {
+      if (done) return;
+      if (!url) { files.delete(name); return fin(null); } // not reachable: the caller falls back to the device voice
+      const begin = () => {
+        if (done) return;
+        player.playbackRate = rate;
+        player.currentTime = start;
+        player.ontimeupdate = () => { if (player.currentTime >= end) fin(true); };
+        timer = setTimeout(() => fin(true), ((end - start) / rate) * 1000 + 1500);
+        player.play().catch(() => fin(null));
+      };
+      if (player.dataset.url === url && player.readyState >= 1) return begin();
+      player.dataset.url = url;
+      player.src = url;
+      player.onloadedmetadata = begin;
+      player.onerror = () => fin(null);
+    });
+  });
+}
+
 // Resolves true when the utterance finished, false if it was cut off or could not play.
-export function speak(text, { lang = 'zh', rate = 1, pitch = 1, alt = false } = {}) {
+export async function speak(text, opts = {}) {
+  const { lang = 'zh', rate = 1 } = opts;
+  if (lang === 'zh' && player && hasClip(text)) {
+    const ok = await playClip(CLIPS[text], rate * (settings().slow ? 0.8 : 1));
+    if (ok !== null) return ok;
+  }
+  return speakDevice(text, opts);
+}
+function speakDevice(text, { lang = 'zh', rate = 1, pitch = 1, alt = false } = {}) {
   return new Promise((resolve) => {
     if (!synth || mute || (lang === 'zh' && ttsStatus() === 'novoice')) return resolve(false);
     const busy = !!cur || synth.speaking || synth.pending;
@@ -160,6 +221,11 @@ function prime() {
   try {
     if (synth) { const u = new SpeechSynthesisUtterance(' '); u.volume = 0; synth.speak(u); }
     ctx();
+    if (player && USE_CLIPS && !player.src) {
+      // a moment of silence, so the shared element counts as started by the user
+      player.src = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQAAAAA=';
+      player.play().catch(() => {});
+    }
   } catch {}
 }
 addEventListener('pointerdown', prime, { once: true, capture: true });

@@ -1,6 +1,6 @@
 // One station: listen blind, check understanding, read the transcript, then play the advisor yourself.
 import * as store from './store.js';
-import { speak, stop, canSpeak, hasSecondVoice, sfx } from './audio.js';
+import { speak, stop, canSpeak as deviceVoice, hasClip, hasSecondVoice, sfx } from './audio.js';
 import { h, fill, zh, icon, go, button, sayButton, sleep, speakBox, heardLine, summary } from './ui.js';
 import { wayOut } from './journey.js';
 
@@ -13,6 +13,7 @@ export function sceneView(id) {
   const sc = store.sceneById(id);
   if (!sc) return { el: h('div', { class: 'page' }, h('p', { class: 'note' }, 'That station does not exist.'), button('All scenes', 'primary', () => go('scenes'))), title: '场景', back: 'scenes' };
 
+  const canSpeak = () => deviceVoice() || sc.lines.every((l) => hasClip(l.zh)); // recordings stand in for a missing voice
   let gen = 0; // bumped whenever the step changes, so stale async work stops itself
   const body = h('div', { class: 'scene-body' });
   const tabs = h('div', { class: 'steps', role: 'tablist' });

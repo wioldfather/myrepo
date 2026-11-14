@@ -2,7 +2,7 @@
 import { SCENES, LINES, CHENGYU, REGISTER, PY } from './content.gen.js';
 
 const KEY = 'chongshi.v1';
-const fresh = () => ({ v: 1, cards: {}, scenes: {}, best: {}, days: {}, km: 0, mine: [], tests: [], talks: [], gen: [], t: 0, epoch: 0, set: { slow: false, sfx: true, py: false, voice: '', voice2: '', ear: false } });
+const fresh = () => ({ v: 1, cards: {}, scenes: {}, best: {}, days: {}, km: 0, mine: [], tests: [], talks: [], gen: [], kids: { names: ['Kai', 'Swae'], p: [{ stars: 0, w: {} }, { stars: 0, w: {} }], said: {} }, t: 0, epoch: 0, set: { slow: false, sfx: true, py: false, voice: '', voice2: '', ear: false } });
 
 let S = load();
 
@@ -354,6 +354,22 @@ export function annotateScenes(then) {
   }).catch(() => {});
 }
 
+/* ---------- the children's side: two players, stars, and how often each has found each word ---------- */
+function kidState() {
+  const k = S.kids || (S.kids = fresh().kids);
+  k.p = [0, 1].map((i) => ({ stars: 0, w: {}, ...(k.p && k.p[i]) }));
+  k.names = [0, 1].map((i) => (k.names && k.names[i]) || fresh().kids.names[i]);
+  k.said ||= {};
+  return k;
+}
+export const kids = () => kidState();
+export function kidFound(i, word) { const k = kidState(); k.p[i].w[word] = (k.p[i].w[word] || 0) + 1; save(); }
+export function kidStar(i, n = 1) { kidState().p[i].stars += n; save(); }
+export function kidName(i, name) { kidState().names[i] = name.trim().slice(0, 12) || fresh().kids.names[i]; save(); }
+export function homeSaid(zh) { const k = kidState(); k.said[zh] = (k.said[zh] || 0) + 1; save(); }
+// A set is "known" once the child has found every word in it twice.
+export const kidKnows = (i, set) => set.words.every((w) => (kidState().p[i].w[w.zh] || 0) >= 2);
+
 /* ---------- merging two copies of the same learner's progress (sync between devices) ---------- */
 export const snapshot = () => JSON.stringify(S);
 export const stamp = () => S.t;
@@ -380,6 +396,16 @@ export function mergeIn(o) {
       const seen = new Set(S[key].map(id));
       for (const x of o[key] || []) if (x && !seen.has(id(x))) S[key].push(x);
     };
+    if (o.kids && Array.isArray(o.kids.p)) {
+      const k = kidState();
+      o.kids.p.forEach((op, i) => {
+        if (!op || !k.p[i]) return;
+        k.p[i].stars = Math.max(k.p[i].stars, op.stars || 0);
+        for (const [w, n] of Object.entries(op.w || {})) k.p[i].w[w] = Math.max(k.p[i].w[w] || 0, n);
+      });
+      for (const [z, n] of Object.entries(o.kids.said || {})) k.said[z] = Math.max(k.said[z] || 0, n);
+      if ((o.t || 0) > (S.t || 0) && Array.isArray(o.kids.names)) k.names = o.kids.names;
+    }
     unite('mine', (x) => x.zh);
     unite('gen', (x) => x.id);
     unite('tests', (x) => x.t);

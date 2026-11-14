@@ -19,6 +19,7 @@ offline after the first load and can be added to the home screen.
 | **复习 Recall** | Any time | Two decks on one scheduler. Phrases: an English cue, you produce the Chinese. Words: 7,900 graded words (HSK 1–6 plus the 7–9 band), by eye or by ear. |
 | **水平 Level check** | Every few weeks | Six minutes, 56 sampled words by eye and by ear, corrected for guessing. Reports how much of each HSK band is still there and a vocabulary estimate, and points the Words deck at the first band with gaps. |
 | **游戏 Puzzles** | Any time | 听写 dictation with homophone decoy tiles, 连句 sentence weave, 成语 idiom match, 分寸 register choices. |
+| **一起学 Learn together** | With Kai and Swae | A children's side for two young beginners on the parent's device. Eleven picture sets (80 words): meet the words, find the picture you hear, match pairs, and an action game. Turns alternate, nothing is marked wrong, and stars build each child's train. 家里说 lists what the grown-up can say at breakfast, bath and bedtime. |
 
 Authored content: 141 phrases, 18 scenes, 35 idioms, 18 register situations. Every phrase is one the advisor
 would say or needs to understand, including current student slang (卷, 躺平, 搭子, 社恐, 上岸, 复盘).
@@ -43,6 +44,11 @@ from learning one.
   politely, and what 还行吧 really means.
 
 ## Audio and microphone
+
+Scene dialogue has recorded voices where a recording exists (`audio/*.mp3`, positions in `js/audio.gen.js`):
+each file holds many lines read in order, and a line plays by seeking into it. They were generated with
+ElevenLabs and cut with `tools/build-audio.mjs`, which aligns a recording to its lines from the pauses in it.
+Everything without a recording falls back to the device voice described below.
 
 Speech uses the Web Speech API built into the browser, so the voice is whichever Mandarin voice the device has.
 The app checks at runtime and falls back in steps:
@@ -116,7 +122,7 @@ node tools/build-words.mjs path/to/complete.min.json
 npm test
 ```
 
-Runs 26 end-to-end checks in headless Chromium against the local server (start `npm run serve` first): every
+Runs 28 end-to-end checks in headless Chromium against the local server (start `npm run serve` first): every
 mode played to completion, scheduling, persistence across reloads, the speech fallbacks, the hands-free ride's
 sequencing, the level check, both conversation back ends, scene writing, two-device sync, and layout at
 four screen sizes. Speech and Claude are stubbed, so real audio and real model replies are not covered.
@@ -136,6 +142,7 @@ js/store.js              saved state and the spaced-repetition scheduler
 js/audio.js              speech out, speech in, recording, sound effects
 js/scene.js recall.js games.js ride.js journey.js   the modes
 js/level.js talk.js compose.js                      level check, live conversation, scene writing
+js/kids.js               the children's side
 js/llm.js sync.js        Claude access; progress sync on the claude.ai page
 js/content.gen.js        generated from content/content.mjs
 js/words.gen.js          generated word bank (loaded on demand)
