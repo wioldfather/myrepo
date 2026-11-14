@@ -1,7 +1,7 @@
 // One station: listen blind, check understanding, read the transcript, then play the advisor yourself.
 import * as store from './store.js';
 import { speak, stop, canSpeak, hasSecondVoice, sfx } from './audio.js';
-import { h, zh, icon, go, button, sayButton, sleep, speakBox, heardLine, summary } from './ui.js';
+import { h, fill, zh, icon, go, button, sayButton, sleep, speakBox, heardLine, summary } from './ui.js';
 import { wayOut } from './journey.js';
 
 // The advisor (you) and the student should sound like two people.
@@ -23,10 +23,10 @@ export function sceneView(id) {
     gen++;
     stop();
     const st = store.sceneState(id);
-    tabs.replaceChildren(...store.STEPS.map((s) =>
+    fill(tabs, ...store.STEPS.map((s) =>
       h('button', { class: (s === step ? 'on ' : '') + (st[s] ? 'done' : ''), type: 'button', role: 'tab', 'aria-selected': s === step, onclick: () => show(s) },
         h('b', { lang: 'zh-CN' }, STEP_LABEL[s][0]), h('span', null, STEP_LABEL[s][1]))));
-    body.replaceChildren(steps[step]());
+    fill(body, steps[step]());
     window.scrollTo(0, 0);
   }
 
@@ -42,7 +42,7 @@ export function sceneView(id) {
     let slow = false;
     let run = 0;
     const paint = () => {
-      playBtn.replaceChildren(icon(playing ? 'pause' : 'play'));
+      fill(playBtn, icon(playing ? 'pause' : 'play'));
       playBtn.setAttribute('aria-label', playing ? 'Pause' : 'Play the scene');
       rows.forEach((r, i) => r.classList.toggle('now', playing && i === at));
     };
@@ -102,7 +102,7 @@ export function sceneView(id) {
         nextBtn.hidden = false;
         nextBtn.focus();
       } }, zh(o.t)));
-      box.replaceChildren(h('div', { class: 'q-count' }, `${i + 1} / ${sc.qs.length}`), h('h2', { class: 'q' }, zh(q.q), sayButton(q.q)), h('div', { class: 'opts' }, buttons), why, h('div', { class: 'actions' }, nextBtn));
+      fill(box, h('div', { class: 'q-count' }, `${i + 1} / ${sc.qs.length}`), h('h2', { class: 'q' }, zh(q.q), sayButton(q.q)), h('div', { class: 'opts' }, buttons), why, h('div', { class: 'actions' }, nextBtn));
     }
     ask();
     return box;
@@ -149,7 +149,7 @@ export function sceneView(id) {
       const l = sc.lines[i];
       if (l.s === 'S') {
         thread.append(bubble(l));
-        dock.replaceChildren(h('p', { class: 'note' }, sc.who + ' is speaking…'));
+        fill(dock, h('p', { class: 'note' }, sc.who + ' is speaking…'));
         scroll();
         await speak(l.zh, voiceFor('S'));
         if (my !== gen) return;
@@ -160,7 +160,7 @@ export function sceneView(id) {
     }
     function turn(l) {
       const box = speakBox(l.zh, (res) => reveal(l, res));
-      dock.replaceChildren(
+      fill(dock, 
         h('div', { class: 'cue' }, h('small', null, `Your line ${said + 1} of ${mine}. Say it in Chinese.`), h('p', null, l.en)),
         box,
         h('div', { class: 'actions' }, button(box ? 'Show the line' : 'I said it. Show the line', box ? 'ghost' : 'primary', () => reveal(l, null))));
@@ -171,7 +171,7 @@ export function sceneView(id) {
       thread.append(b);
       speak(l.zh, voiceFor('T'));
       if (res && !res.url) sfx(res.score >= 0.85 ? 'good' : 'tap');
-      dock.replaceChildren(
+      fill(dock, 
         heardLine(res, l.zh),
         h('div', { class: 'actions' },
           button('Next', 'primary', () => { said++; i++; advance(); }, 'arrow'),
@@ -185,7 +185,7 @@ export function sceneView(id) {
       store.addKm(5);
       store.markDay();
       sfx('done');
-      dock.replaceChildren(summary({
+      fill(dock, summary({
         zhTitle: '到站',
         title: 'Station complete',
         rows: [['Lines spoken', mine], ['Distance', '+5 km']],

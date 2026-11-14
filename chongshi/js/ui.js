@@ -22,6 +22,13 @@ export function h(tag, props, ...kids) {
 const HAN = /[一-鿿]/;
 export const isHan = (ch) => HAN.test(ch);
 
+// Replace an element's children. Unlike the DOM's own replaceChildren, absent children (null, false) are
+// skipped instead of being written out as the text "null".
+export function fill(el, ...kids) {
+  el.replaceChildren(...kids.flat(Infinity).filter((k) => k != null && k !== false));
+  return el;
+}
+
 // Chinese text with pinyin riding above each character. The pinyin stays in the DOM and is shown
 // or hidden by the `py-on` class on <html>. `hit` (from audio.compare) tints characters heard / missed.
 export function zh(text, { cls = '', hit = null } = {}) {

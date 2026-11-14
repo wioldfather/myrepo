@@ -5,7 +5,7 @@
 // The cycle repeats with the next scene until the chosen time is up. Nothing needs a tap; the two big rating zones are optional.
 import * as store from './store.js';
 import { speak, stop, sfx, canSpeak, ttsStatus, keepAwake } from './audio.js';
-import { h, zh, icon, go, button, sleep, summary, isHan } from './ui.js';
+import { h, fill, zh, icon, go, button, sleep, summary, isHan } from './ui.js';
 import { voiceFor } from './scene.js';
 
 class Skip extends Error {}
@@ -25,7 +25,7 @@ export function rideView() {
       pick.forEach((b, i) => b.setAttribute('aria-pressed', [10, 20, 30][i] === m));
     } }, m + ' min'));
     const ok = canSpeak();
-    el.replaceChildren(h('div', { class: 'ride-intro' },
+    fill(el, h('div', { class: 'ride-intro' },
       h('button', { class: 'iconbtn', type: 'button', 'aria-label': 'Close', onclick: () => go('home') }, icon('x')),
       h('h1', null, h('span', { lang: 'zh-CN' }, '耳机模式'), h('small', null, 'Ears-only ride')),
       h('ol', { class: 'how' },
@@ -66,7 +66,7 @@ export function rideView() {
       h('button', { type: 'button', class: 'no', onclick: () => rate(0) }, h('b', { lang: 'zh-CN' }, '忘了'), h('span', null, 'Blanked')),
       h('button', { type: 'button', class: 'ok', onclick: () => rate(1) }, h('b', { lang: 'zh-CN' }, '会了'), h('span', null, 'Had it')));
     const main = h('button', { class: 'led-main', type: 'button', 'aria-label': 'Pause or resume', onclick: toggle }, labelEl, textEl, subEl);
-    el.replaceChildren(h('div', { class: 'led' },
+    fill(el, h('div', { class: 'led' },
       h('div', { class: 'led-top' }, timeEl, kindEl, h('button', { class: 'ctl', type: 'button', 'aria-label': 'End ride', onclick: () => finish(false) }, icon('x'))),
       main,
       h('div', { class: 'led-bar' }, barEl),
@@ -78,11 +78,11 @@ export function rideView() {
 
     const face = (label, text, sub) => {
       labelEl.textContent = label || '';
-      textEl.replaceChildren(text || '');
+      fill(textEl, text || '');
       subEl.textContent = sub || '';
     };
     const paintPause = () => {
-      pauseBtn.replaceChildren(icon(paused ? 'play' : 'pause'));
+      fill(pauseBtn, icon(paused ? 'play' : 'pause'));
       pauseBtn.setAttribute('aria-label', paused ? 'Resume' : 'Pause');
       el.classList.toggle('paused', paused);
     };
@@ -272,7 +272,7 @@ export function rideView() {
       if (silent) return;
       if (km) sfx('done');
       el.classList.remove('paused');
-      el.replaceChildren(h('div', { class: 'ride-intro' }, summary({
+      fill(el, h('div', { class: 'ride-intro' }, summary({
         zhTitle: '到站了',
         title: km ? 'Ride complete' : 'Ride ended',
         rows: [['Time', clock(Math.min(elapsed, budget))], ['Phrases practised', done.cards], ['Marked as blanked', done.blanked], ['Scenes heard', done.scenes], ['Distance', `+${km} km`]],

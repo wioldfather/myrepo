@@ -3,7 +3,7 @@
 // corrects for guessing, and reports how much of each band is still there. Words missed go into the Words deck.
 import * as store from './store.js';
 import { speak, stop, sfx, canSpeak } from './audio.js';
-import { h, icon, go, button, summary } from './ui.js';
+import { h, fill, icon, go, button, summary } from './ui.js';
 
 // How many words to sample per band. Bands 1-2 only need a sanity check for this learner.
 const READ = { 1: 2, 2: 2, 3: 5, 4: 8, 5: 8, 6: 8, 7: 8 };
@@ -28,7 +28,7 @@ export function levelView() {
 
   function intro() {
     const last = levelSummary();
-    el.replaceChildren(
+    fill(el, 
       h('section', { class: 'panel' },
         h('h2', null, h('span', { lang: 'zh-CN' }, '水平测试'), ' Level check'),
         h('p', null, 'About six minutes. You will see or hear 56 words drawn from every HSK band and pick what each means.'),
@@ -41,10 +41,10 @@ export function levelView() {
   }
 
   async function start() {
-    el.replaceChildren(h('p', { class: 'note' }, 'Loading the word bank…'));
+    fill(el, h('p', { class: 'note' }, 'Loading the word bank…'));
     let bank;
     try { bank = await store.loadWords(); } catch {
-      el.replaceChildren(h('p', { class: 'note warn' }, 'The word bank could not be loaded. Check your connection and try again.'), h('div', { class: 'actions' }, button('Retry', 'primary', start)));
+      fill(el, h('p', { class: 'note warn' }, 'The word bank could not be loaded. Check your connection and try again.'), h('div', { class: 'actions' }, button('Retry', 'primary', start)));
       return;
     }
     if (!alive) return;
@@ -95,7 +95,7 @@ export function levelView() {
         if (!alive) return;
         if (++i < items.length) show(); else finish();
       }
-      el.replaceChildren(
+      fill(el, 
         h('div', { class: 'run-head' }, h('div', { class: 'bar' }, h('i', { style: { width: (i / items.length) * 100 + '%' } })), h('span', { class: 'run-kind' }, `${i + 1} / ${items.length}`)),
         h('article', { class: 'card test', onclick: () => { if (answered) next(); } },
           h('p', { class: 'cue-label' }, listen ? '听力 · What does it mean?' : '认字 · What does it mean?'),
@@ -132,7 +132,7 @@ export function levelView() {
       store.addKm(5);
       store.markDay();
       sfx('done');
-      el.replaceChildren(report(result, before, true));
+      fill(el, report(result, before, true));
       window.scrollTo(0, 0);
     }
     show();

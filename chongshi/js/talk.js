@@ -5,7 +5,7 @@
 import { TALKS } from './content.gen.js';
 import * as store from './store.js';
 import { speak, stop, sfx, canSpeak, speechMode, listen } from './audio.js';
-import { h, zh, icon, go, button, toast } from './ui.js';
+import { h, fill, zh, icon, go, button, toast } from './ui.js';
 import { backend, ask, askJson, capability, setApiKey, MESSAGES } from './llm.js';
 
 let customBrief = ''; // the learner's own scenario, carried from the hub to the session
@@ -62,7 +62,7 @@ export function talkHub() {
     const own = h('textarea', { id: 'own-scenario', rows: 2, placeholder: 'Describe a conversation you have coming up, in English or Chinese', 'aria-label': 'Your own scenario' });
     const key = h('input', { id: 'api-key', type: 'password', autocomplete: 'off', placeholder: 'sk-ant-…', 'aria-label': 'Claude API key' });
 
-    el.replaceChildren(
+    fill(el, 
       how ? null : h('section', { class: 'panel' },
         h('h2', null, h('span', { lang: 'zh-CN' }, '连接'), ' Connect Claude'),
         h('p', null, 'Live conversation needs Claude. Two ways to get it:'),
@@ -122,13 +122,12 @@ export function talkView(arg) {
   let quiet = null;
   let say = 0; // bumped to cancel speech in progress
   let bank = null; // the word bank, once loaded, supplies pinyin for what Claude says
-  store.loadWords().then((b) => { bank = b; }).catch(() => {});
 
   const setPhase = (p, text) => {
     phase = p;
     el.dataset.phase = p;
     status.textContent = text || { thinking: '…', speaking: sc.who + ' …', listening: 'Listening…', idle: voiceIn() ? 'Tap the mic to answer, or type' : 'Type your answer' }[p] || '';
-    micBtn.replaceChildren(icon(p === 'listening' ? 'pause' : 'mic'));
+    fill(micBtn, icon(p === 'listening' ? 'pause' : 'mic'));
   };
   const voiceIn = () => (dict ? 'dictation' : speechMode() === 'sr' ? 'sr' : null);
   const scroll = () => dock.scrollIntoView({ block: 'end', behavior: 'smooth' });
@@ -268,7 +267,7 @@ export function talkView(arg) {
     if (stopListening) stopListening();
     if (mine < 2) return go('talk');
     setPhase('review');
-    dock.replaceChildren(h('p', { class: 'note' }, 'Claude is reviewing the conversation…'));
+    fill(dock, h('p', { class: 'note' }, 'Claude is reviewing the conversation…'));
     scroll();
     let r;
     try {
@@ -281,7 +280,7 @@ Reply with only a JSON object in this shape:
 Give at most five fixes, only for real errors or clearly unnatural phrasing; an empty list is fine. Give three to five phrases, taken from the conversation or ones that would have helped the learner in it.`);
     } catch (e) {
       if (!alive) return;
-      dock.replaceChildren(h('p', { class: 'note warn' }, MESSAGES[e.code] || MESSAGES.failed), h('div', { class: 'actions' }, button('Try the review again', 'primary', review), button('Leave', 'ghost', () => go('talk'))));
+      fill(dock, h('p', { class: 'note warn' }, MESSAGES[e.code] || MESSAGES.failed), h('div', { class: 'actions' }, button('Try the review again', 'primary', review), button('Leave', 'ghost', () => go('talk'))));
       return;
     }
     if (!alive) return;
@@ -291,7 +290,7 @@ Give at most five fixes, only for real errors or clearly unnatural phrasing; an 
     store.addKm(5 + mine);
     store.markDay();
     sfx('done');
-    dock.replaceChildren(h('section', { class: 'summary result' },
+    fill(dock, h('section', { class: 'summary result' },
       h('div', { class: 'summary-sign' }, h('b', null, String(r.level || '对话')), h('span', null, `Speaking estimate${r.hskk ? ' · HSKK ' + r.hskk : ''} · ${mine} turns`)),
       r.summary ? h('p', { class: 'summary-note lead' }, String(r.summary)) : null,
       fixes.length ? h('h3', null, 'Say it better') : null,
@@ -327,7 +326,8 @@ Give at most five fixes, only for real errors or clearly unnatural phrasing; an 
 
   (async () => {
     // A claude.ai page may offer Claude's voice and dictation; both are absent on phones and outside Claude.
-    const [v, d] = await Promise.all([capability('tts'), capability('dictation')]);
+    // Wait briefly for the word bank so the first reply already carries pinyin.
+    const [v, d] = await Promise.all([capability('tts'), capability('dictation'), Promise.race([store.loadWords().then((b) => { bank = b; }).catch(() => {}), new Promise((r) => setTimeout(r, 2500))])]);
     if (!alive) return;
     voice = v;
     if (d) {

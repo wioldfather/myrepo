@@ -6,7 +6,7 @@
 import { CHENGYU, REGISTER } from './content.gen.js';
 import * as store from './store.js';
 import { speak, stop, sfx, canSpeak, homophones } from './audio.js';
-import { h, zh, icon, go, button, sayButton, strip, summary, isHan, pinyinOf } from './ui.js';
+import { h, fill, zh, icon, go, button, sayButton, strip, summary, isHan, pinyinOf } from './ui.js';
 import { wayOut } from './journey.js';
 
 const GAMES = {
@@ -63,10 +63,10 @@ function board({ layout, decoys, line, onSolved }) {
   const el = h('div', { class: 'board-game' }, row, bank);
 
   function paint() {
-    row.replaceChildren(...slots.map((s) => (s.fixed
+    fill(row, ...slots.map((s) => (s.fixed
       ? h('span', { class: 'fixed' }, s.fixed)
       : h('button', { class: 'slot' + (s.tile ? ' filled' : '') + (s.locked ? ' ok' : '') + (s.bad ? ' bad' : ''), type: 'button', disabled: s.locked || !s.tile || over || null, 'aria-label': s.tile ? 'Remove ' + s.tile.t : 'Empty', onclick: () => lift(s) }, s.tile ? s.tile.t : ''))));
-    bank.replaceChildren(...tiles.map((t) => h('button', { class: 'tile' + (t.used ? ' used' : ''), type: 'button', disabled: t.used || over || null, onclick: () => place(t) }, t.t)));
+    fill(bank, ...tiles.map((t) => h('button', { class: 'tile' + (t.used ? ' used' : ''), type: 'button', disabled: t.used || over || null, onclick: () => place(t) }, t.t)));
   }
   function place(t) {
     const s = gaps.find((g) => !g.tile);
@@ -260,7 +260,7 @@ export function gameView(type) {
         const next = () => { stop(); if (++i < rounds.length) show(); else finish(); };
         onEnter = next;
         foot.className = 'verdict ' + (wasClean ? 'good' : ok ? 'mid' : 'bad');
-        foot.replaceChildren(
+        fill(foot, 
           h('div', { class: 'verdict-head' }, icon(ok ? 'check' : 'x'), h('b', null, wasClean ? '通过 · Clean' : ok ? 'Solved with help' : 'Missed this one'), streak >= 2 ? h('em', { class: 'streak', lang: 'zh-CN' }, '连对 ' + streak) : null, gain ? h('span', null, `+${gain} km`) : null),
           ...detail,
           h('div', { class: 'actions' }, button(i < rounds.length - 1 ? 'Next' : 'Finish', 'primary', next, 'arrow')));
@@ -268,7 +268,7 @@ export function gameView(type) {
         foot.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
         foot.querySelector('.primary').focus({ preventScroll: true });
       });
-      el.replaceChildren(
+      fill(el, 
         h('div', { class: 'run-head' }, strip(rounds.length, i), h('span', { class: 'run-kind', lang: 'zh-CN' }, GAMES[t].zh)),
         h('div', { class: 'round' }, roundEl),
         foot);
@@ -281,7 +281,7 @@ export function gameView(type) {
       store.setBest(type, clean);
       store.markDay();
       sfx('done');
-      el.replaceChildren(summary({
+      fill(el, summary({
         zhTitle: g.zh + ' 完成',
         title: g.en + ' complete',
         rows: [['Clean', `${clean} / ${rounds.length}`], ['Solved', `${solved} / ${rounds.length}`], ['Distance', `+${km} km`]],

@@ -80,6 +80,9 @@ const go = async (page, hash) => { await page.evaluate((h) => { location.hash = 
 const noOverflow = async (page, where) => {
   const o = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   assert(o <= 0, `horizontal overflow of ${o}px at ${where}`);
+  // an absent optional element must never be written out as text
+  const stray = await page.evaluate(() => { const w = document.createTreeWalker(document.querySelector('#view'), NodeFilter.SHOW_TEXT); for (let n = w.nextNode(); n; n = w.nextNode()) if (/^(null|undefined|NaN|\[object Object\])$/.test(n.data.trim())) return n.data; return ''; });
+  assert(!stray, `stray "${stray}" text at ${where}`);
 };
 
 /* ---------- puzzle solvers: read the round like a player would, look the answer up in the content ---------- */
@@ -190,7 +193,9 @@ await test('scene: listen, check, read, role-play (say-aloud fallback)', {}, asy
   for (let i = 0; i < mine; i++) {
     await page.waitForSelector('.cue');
     assert(!(await page.locator('.speakbox').count()), 'no mic control without a microphone');
+    await noOverflow(page, 'role-play cue');
     await page.click('text=I said it. Show the line');
+    await noOverflow(page, 'role-play reveal');
     await page.click('.dock .primary');
   }
   await page.waitForSelector('.summary');

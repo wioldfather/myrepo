@@ -2,7 +2,7 @@
 import { LINES, SCENES } from './content.gen.js';
 import * as store from './store.js';
 import { stop, speak, zhVoices, ttsStatus, sfx, keepAwake } from './audio.js';
-import { h, zh, icon, go, button, toast } from './ui.js';
+import { h, fill, zh, icon, go, button, toast } from './ui.js';
 import { sceneView } from './scene.js';
 import { recallView } from './recall.js';
 import { gamesHub, gameView } from './games.js';
@@ -164,7 +164,7 @@ function route() {
     a.classList.toggle('on', a.dataset.tab === tab);
     if (a.dataset.tab === tab) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
   }
-  $('view').replaceChildren(view.el);
+  fill($('view'), view.el);
   window.scrollTo(0, 0);
   if (started) $('view').focus({ preventScroll: true }); // screen readers land on the new screen, not the old button
   started = true;
@@ -175,7 +175,7 @@ function route() {
 function openSettings() {
   const set = store.settings();
   const sheet = $('sheet');
-  const close = () => { sheet.hidden = true; sheet.replaceChildren(); };
+  const close = () => { sheet.hidden = true; fill(sheet); };
   const toggle = (id, label, hint, key) => {
     const input = h('input', { type: 'checkbox', id, checked: set[key] || null, onchange: () => store.setSetting(key, input.checked) });
     return h('label', { class: 'row', for: id }, h('span', null, h('b', null, label), h('small', null, hint)), input);
@@ -208,7 +208,7 @@ function openSettings() {
     route();
   });
 
-  sheet.replaceChildren(h('div', { class: 'sheet-card', role: 'dialog', 'aria-label': 'Settings' },
+  fill(sheet, h('div', { class: 'sheet-card', role: 'dialog', 'aria-label': 'Settings' },
     h('div', { class: 'sheet-head' }, h('h2', null, h('span', { lang: 'zh-CN' }, '设置'), ' Settings'), h('button', { class: 'iconbtn', type: 'button', 'aria-label': 'Close', onclick: close }, icon('x'))),
     voiceRow,
     toggle('set-slow', 'Slower speech', 'Plays Chinese at 0.8×. Leave off once your ear is back.', 'slow'),
@@ -244,7 +244,7 @@ function applyPinyin() {
 
 /* ---------- boot ---------- */
 function boot() {
-  $('tabs').replaceChildren(...TABS.map(([hash, z, en, ic]) =>
+  fill($('tabs'), ...TABS.map(([hash, z, en, ic]) =>
     h('a', { href: '#' + hash, 'data-tab': hash }, icon(ic), h('b', { lang: 'zh-CN' }, z), h('span', null, en))));
   $('py').onclick = () => { store.setSetting('py', !store.settings().py); applyPinyin(); sfx('tap'); };
   $('gear').onclick = openSettings;

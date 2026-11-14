@@ -2,7 +2,7 @@
 // scene, so it runs through the same four steps, feeds Recall and the puzzles, and plays in the ears-only ride.
 import * as store from './store.js';
 import { backend, askJson, MESSAGES } from './llm.js';
-import { h, go, button, toast } from './ui.js';
+import { h, fill, go, button, toast } from './ui.js';
 
 const IDEAS = [
   'A student asks whether a PhD is worth it',
@@ -42,14 +42,14 @@ export function composeView() {
     const how = await backend();
     if (!alive) return;
     if (!how) {
-      el.replaceChildren(h('section', { class: 'panel' },
+      fill(el, h('section', { class: 'panel' },
         h('h2', null, h('span', { lang: 'zh-CN' }, '自编'), ' New scenes need Claude'),
         h('p', null, 'Open the app from its claude.ai page, or add an API key on the Talk screen.'),
         h('div', { class: 'actions' }, button('Set up on the Talk screen', 'primary', () => go('talk')))));
       return;
     }
     const topic = h('textarea', { id: 'compose-topic', rows: 2, placeholder: 'What should the conversation be about?', 'aria-label': 'Topic for the new scene' });
-    el.replaceChildren(h('section', { class: 'panel' },
+    fill(el, h('section', { class: 'panel' },
       h('h2', null, h('span', { lang: 'zh-CN' }, '自编'), ' A scene written for you'),
       h('p', null, 'Name a situation from your work. Claude writes a conversation at your level, with questions, phrases to keep and a note on the culture behind it.'),
       topic,
@@ -64,7 +64,7 @@ export function composeView() {
     const tests = store.tests();
     const level = tests.length ? `about HSK ${Math.max(4, tests[tests.length - 1].level)}` : 'about HSK 5';
     ctl = new AbortController();
-    el.replaceChildren(h('section', { class: 'panel' },
+    fill(el, h('section', { class: 'panel' },
       h('h2', null, h('span', { lang: 'zh-CN' }, '自编'), ' Writing your scene'),
       h('p', null, 'Claude is writing it now. This takes up to a minute.'),
       h('div', { class: 'bar busy' }, h('i')),

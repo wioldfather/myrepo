@@ -3,7 +3,7 @@
 //   词汇 Words    a graded HSK word, by eye or by ear; you recall its reading and meaning, then rate
 import * as store from './store.js';
 import { speak, stop, sfx, canSpeak } from './audio.js';
-import { h, zh, icon, go, button, sayButton, strip, speakBox, heardLine, summary, isHan } from './ui.js';
+import { h, fill, zh, icon, go, button, sayButton, strip, speakBox, heardLine, summary, isHan } from './ui.js';
 import { wayOut } from './journey.js';
 import { backend, ask, MESSAGES } from './llm.js';
 
@@ -31,7 +31,7 @@ export function recallView(arg) {
 
   function paintTabs() {
     const due = { phrase: store.stats().due, word: store.wordStats().due };
-    tabs.replaceChildren(...[['phrase', 'recall', '说法', 'Phrases'], ['word', 'recall-words', '词汇', 'Words']].map(([k, hash, z, en]) =>
+    fill(tabs, ...[['phrase', 'recall', '说法', 'Phrases'], ['word', 'recall-words', '词汇', 'Words']].map(([k, hash, z, en]) =>
       h('a', { href: '#' + hash, class: k === deck ? 'on' : '', role: 'tab', 'aria-selected': k === deck },
         h('b', { lang: 'zh-CN' }, z), h('span', null, en), due[k] ? h('em', null, due[k]) : null)));
   }
@@ -48,7 +48,7 @@ export function recallView(arg) {
       let res = null;
       const show = () => back(c, res);
       const f = face.front(c, (r) => { res = r; show(); });
-      body.replaceChildren(strip(total, passed), f.card,
+      fill(body, strip(total, passed), f.card,
         h('div', { class: 'actions sticky' }, button('Show answer', 'primary', show), ...(f.extra || [])));
       setKeys((k) => {
         if (k === ' ' || k === 'Enter') { show(); return true; }
@@ -74,7 +74,7 @@ export function recallView(arg) {
         }
         if (queue.length) front(); else finish();
       };
-      body.replaceChildren(strip(total, passed), face.back(c, res),
+      fill(body, strip(total, passed), face.back(c, res),
         h('div', { class: 'rate sticky' }, RATINGS.map(([r, z, en, cls]) =>
           h('button', { class: 'rate-btn ' + cls, type: 'button', onclick: () => rateIt(r) },
             h('b', { lang: 'zh-CN' }, z), h('span', null, en), h('small', null, gapLabel(store.nextGap(c.id, r, FIRST[deck])))))));
@@ -91,7 +91,7 @@ export function recallView(arg) {
       store.markDay();
       sfx('done');
       paintTabs();
-      body.replaceChildren(summary({
+      fill(body, summary({
         zhTitle: '复习完了',
         title: ahead ? 'Extra practice done' : deck === 'word' ? 'Words complete' : 'Recall complete',
         rows: [['Instant', tally[2]], ['Took effort', tally[1]], ['Blanked', tally[0]], ['Distance', `+${km} km`]],
@@ -132,7 +132,7 @@ export function recallView(arg) {
     if (queue.length) return session(queue, { face: phraseFace, again: phrases });
     const ahead = store.aheadQueue();
     setKeys(null);
-    body.replaceChildren(summary({
+    fill(body, summary({
       zhTitle: '都复习完了',
       title: 'Nothing is due',
       note: 'Every phrase you have met is scheduled for later. New ones arrive when you ride the next scene.',
@@ -177,9 +177,9 @@ export function recallView(arg) {
   let bank = null;
   async function words() {
     if (!bank) {
-      body.replaceChildren(h('p', { class: 'note' }, 'Loading the word bank…'));
+      fill(body, h('p', { class: 'note' }, 'Loading the word bank…'));
       try { [bank, canAsk] = [await store.loadWords(), !!(await Promise.race([backend(), new Promise((r) => setTimeout(() => r(null), 1500))]))]; } catch {
-        body.replaceChildren(h('p', { class: 'note warn' }, 'The word bank could not be loaded. Check your connection and try again.'));
+        fill(body, h('p', { class: 'note warn' }, 'The word bank could not be loaded. Check your connection and try again.'));
         return;
       }
       if (!alive) return;
@@ -187,7 +187,7 @@ export function recallView(arg) {
     const queue = store.wordQueue(bank);
     const tested = store.tests().length;
     if (!queue.length) {
-      body.replaceChildren(summary({ zhTitle: '词汇', title: 'No words left at this level', note: 'Retake the level check to move the starting point.', actions: [button('Level check', 'primary', () => go('level')), ...wayOut()] }));
+      fill(body, summary({ zhTitle: '词汇', title: 'No words left at this level', note: 'Retake the level check to move the starting point.', actions: [button('Level check', 'primary', () => go('level')), ...wayOut()] }));
       return;
     }
     session(queue, { face: wordFace, again: words });
