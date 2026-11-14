@@ -1,6 +1,6 @@
 // Fake speech synthesis for headless runs: two Mandarin voices + one English, utterances "finish" after a short delay.
 (() => {
-  const voices = [
+  const voices = window.__VOICES || [
     { name: 'Tingting', lang: 'zh-CN', voiceURI: 'tt', default: false, localService: true },
     { name: 'Google 普通话', lang: 'zh-CN', voiceURI: 'gg', default: false, localService: false },
     { name: 'Samantha', lang: 'en-US', voiceURI: 'sam', default: true, localService: true },

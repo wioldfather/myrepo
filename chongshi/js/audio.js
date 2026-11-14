@@ -14,13 +14,27 @@ if (synth) {
   if (synth.addEventListener) synth.addEventListener('voiceschanged', refresh);
 }
 
-const rank = (v) => (/premium|enhanced|natural|neural|online/i.test(v.name) ? 3 : 0) + (/Tingting|Ting-Ting|Xiaoxiao|Google|Yunxi|Lili/i.test(v.name) ? 2 : 0) - (/compact|eloquence/i.test(v.name) ? 2 : 0);
+// Voice quality varies wildly between devices. Apple ships "Eloquence" and novelty voices (Eddy, Flo, Grandma,
+// Rocko, Albert, Zarvox…) for every language, and older systems have formant synthesisers; all of them sound
+// like robots. Never choose those. Among the rest, prefer voices the system marks as enhanced or neural.
+const ROBOTIC = /eloquence|espeak|pico|festival|\b(eddy|flo|grandma|grandpa|reed|rocko|sandy|shelley|albert|bahh|bells|boing|bubbles|cellos|jester|organ|superstar|trinoids|whisper|wobble|zarvox|fred|junior|kathy|ralph)\b|bad news|good news/i;
+const label = (v) => v.name + ' ' + (v.voiceURI || '');
+const robotic = (v) => ROBOTIC.test(label(v));
+const rank = (v) => {
+  const n = label(v);
+  return (/premium|enhanced|natural|neural|online|siri/i.test(n) ? 4 : 0)
+    + (/tingting|ting-ting|lili|lilian|yu-?shu|shanshan|binbin|bobo|meijia|xiaoxiao|xiaoyi|yunxi|yunyang|yunjian|google|samantha|ava\b|allison|zoe|evan|nathan|aria|jenny/i.test(n) ? 2 : 0)
+    - (/huihui|kangkang|yaoyao|compact|zira|david|hazel/i.test(n) ? 1 : 0);
+};
+const best = (list) => {
+  const good = list.filter((v) => !robotic(v));
+  return (good.length ? good : list).sort((a, b) => rank(b) - rank(a));
+};
 
 export function zhVoices() {
   refresh();
   const cn = voices.filter((v) => /^(zh[-_](CN|Hans)|cmn[-_]Hans|zh$)/i.test(v.lang));
-  const pool = cn.length ? cn : voices.filter((v) => /^(zh[-_]TW|cmn[-_]Hant)/i.test(v.lang));
-  return pool.sort((a, b) => rank(b) - rank(a));
+  return best(cn.length ? cn : voices.filter((v) => /^(zh[-_]TW|cmn[-_]Hant)/i.test(v.lang)));
 }
 // 'ok' · 'novoice' (voices exist, none Mandarin) · 'unknown' (list not loaded yet; try anyway) · 'unsupported'
 export function ttsStatus() {
@@ -33,13 +47,18 @@ let mute = false; // set when a browser accepts speech calls but never actually 
 export const canSpeak = () => !mute && ['ok', 'unknown'].includes(ttsStatus());
 
 function pickVoice(lang, alt) {
-  if (lang !== 'zh') return voices.find((v) => /^en[-_]US/i.test(v.lang) && v.default) || voices.find((v) => /^en[-_]US/i.test(v.lang)) || voices.find((v) => /^en/i.test(v.lang)) || null;
+  if (lang !== 'zh') {
+    const us = voices.filter((v) => /^en[-_]US/i.test(v.lang));
+    return best(us.length ? us : voices.filter((v) => /^en/i.test(v.lang)))[0] || null;
+  }
   const zs = zhVoices();
   const main = zs.find((v) => v.voiceURI === settings().voice) || zs[0] || null;
-  if (!alt) return main;
-  return zs.find((v) => v !== main) || main;
+  if (!alt || settings().voice2 === 'same') return main;
+  // The student gets a second voice only when a genuinely good one exists; otherwise the same voice is used
+  // and the advisor's lines are pitched slightly lower instead.
+  return zs.find((v) => v.voiceURI === settings().voice2 && v !== main) || zs.find((v) => v !== main && rank(v) >= 2) || main;
 }
-export const hasSecondVoice = () => zhVoices().length > 1;
+export const hasSecondVoice = () => pickVoice('zh', true) !== pickVoice('zh', false);
 
 const estimate = (text, rate) => ((text.match(/[一-鿿]/g) || []).length * 300 + (text.match(/[A-Za-z0-9]/g) || []).length * 75 + 700) / rate;
 

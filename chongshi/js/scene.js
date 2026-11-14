@@ -5,7 +5,7 @@ import { h, zh, icon, go, button, sayButton, sleep, speakBox, heardLine, summary
 import { wayOut } from './journey.js';
 
 // The advisor (you) and the student should sound like two people.
-export const voiceFor = (who, rate = 1) => (who === 'T' ? { rate, pitch: 0.9 } : { rate, alt: true, pitch: hasSecondVoice() ? 1 : 1.2 });
+export const voiceFor = (who, rate = 1) => (who === 'T' ? { rate, pitch: hasSecondVoice() ? 1 : 0.9 } : { rate, alt: true });
 
 const STEP_LABEL = { listen: ['听', 'Listen'], check: ['懂', 'Check'], read: ['读', 'Read'], speak: ['说', 'Speak'] };
 
@@ -190,7 +190,7 @@ export function sceneView(id) {
         title: 'Station complete',
         rows: [['Lines spoken', mine], ['Distance', '+5 km']],
         note: first ? `${sc.chunks.length} phrases from this stop now come first in Recall.` : 'Each replay makes the next conversation easier to start.',
-        actions: wayOut('Play it again', () => show('speak')),
+        actions: [...wayOut('Play it again', () => show('speak')), button('Continue it live with Claude', 'ghost', () => go('talk-' + id), 'mic')],
       }));
       scroll();
     }

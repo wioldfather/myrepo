@@ -32,14 +32,15 @@ export function gamesHub() {
 function buildRounds(type) {
   const of = (t, items) => items.map((item) => ({ t, item }));
   const speakable = (n) => store.pickChunks(n + 4).filter((c) => [...c.zh].filter(isHan).length <= 14).slice(0, n);
+  const weavable = (n) => store.pickChunks(n + 4).filter((c) => c.ex.length >= 3).slice(0, n); // phrases kept from conversations have no sentence to weave
   switch (type) {
     case 'dictation': return of('dictation', speakable(8));
-    case 'weave': return of('weave', store.pickChunks(8));
+    case 'weave': return of('weave', weavable(8));
     case 'chengyu': return of('chengyu', store.pickSpaced(CHENGYU, 8));
     case 'register': return of('register', store.pickSpaced(REGISTER, 6));
     default: {
       const d = of('dictation', speakable(2));
-      const w = of('weave', store.pickChunks(4).filter((c) => !d.some((r) => r.item === c)).slice(0, 2));
+      const w = of('weave', weavable(4).filter((c) => !d.some((r) => r.item === c)).slice(0, 2));
       const y = of('chengyu', store.pickSpaced(CHENGYU, 2));
       const r = of('register', store.pickSpaced(REGISTER, 2));
       return [0, 1].flatMap((i) => [d[i], w[i], y[i], r[i]]).filter(Boolean);

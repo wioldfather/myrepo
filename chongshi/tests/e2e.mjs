@@ -4,7 +4,8 @@ import { createRequire } from 'node:module';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { SCENES, CHENGYU, REGISTER, PY } from '../js/content.gen.js';
+import { SCENES, CHENGYU, REGISTER, TALKS, PY } from '../js/content.gen.js';
+import { WORDS } from '../js/words.gen.js';
 
 const require = createRequire(import.meta.url);
 const { chromium } = require('playwright');
@@ -27,6 +28,24 @@ const NO_MIC = NO_SR + 'Object.defineProperty(navigator, "mediaDevices", { value
 const NO_ZH_VOICE = `(() => { const s = window.speechSynthesis; const all = s.getVoices(); s.getVoices = () => all.filter((v) => v.lang.startsWith('en')); })();`;
 
 const SILENT_TTS = `Object.defineProperty(window, 'speechSynthesis', { value: { speaking: false, pending: false, getVoices: () => [], addEventListener() {}, cancel() {}, speak() {} }, configurable: true }); window.SpeechSynthesisUtterance = function (t) { this.text = t; };`;
+
+// A claude.ai page: `sample` answers in character, translates, hints, and writes the debrief.
+const DEBRIEF = { level: 'HSK 5', hskk: '中级', summary: 'You kept the conversation moving. Work on measure words next.', fixes: [{ said: '我很高兴认识你', better: '很高兴认识你', why: 'Drop the subject; it is implied.' }], phrases: [{ zh: '慢慢说，不着急。', pinyin: 'màn màn shuō bù zháo jí', en: 'Take your time, no rush.', note: 'Calming a nervous student.' }] };
+const FAKE_CLAUDE = `window.__asked = []; window.claude = { use: async (name) => (name !== 'sample' ? null : async (input, opts = {}) => {
+  window.__asked.push(input);
+  const flat = typeof input === 'string' ? input : input[0].content;
+  const text = /JSON object/.test(flat) ? ${JSON.stringify(JSON.stringify(DEBRIEF))} : /^Translate/.test(flat) ? 'Hello! Have you been busy lately?' : /is stuck/.test(flat) ? '还行，就是有点儿累。 (Not bad, just a bit tired.)' : '老师好！最近有点儿忙。您呢？';
+  if (opts.onText) opts.onText({ text, delta: text });
+  return { text, truncated: false, modelTierApplied: 'quick' };
+}) };`;
+const ROBOT_VOICES = `window.__VOICES = [
+  { name: 'Eddy (Chinese (China mainland))', lang: 'zh-CN', voiceURI: 'com.apple.eloquence.zh-CN.Eddy', localService: true },
+  { name: 'Tingting', lang: 'zh-CN', voiceURI: 'com.apple.voice.compact.zh-CN.Tingting', localService: true },
+  { name: 'Grandma (Chinese (China mainland))', lang: 'zh-CN', voiceURI: 'com.apple.eloquence.zh-CN.Grandma', localService: true },
+  { name: 'Albert', lang: 'en-US', voiceURI: 'com.apple.speech.synthesis.voice.Albert', default: true, localService: true },
+  { name: 'Samantha', lang: 'en-US', voiceURI: 'com.apple.voice.compact.en-US.Samantha', localService: true },
+];`;
+const WORD = new Map(Object.entries(WORDS).flatMap(([lv, t]) => t.split('\n').map((l) => { const [w, y, g] = l.split('\t'); return [w, { lv: +lv, g }]; })));
 
 let failures = 0;
 const results = [];
@@ -54,6 +73,7 @@ async function test(name, { scripts = [NO_MIC], viewport = { width: 390, height:
   }
   await ctx.close();
 }
+const plain = (loc) => loc.evaluate((e) => [...e.childNodes].map((n) => (n.nodeName === 'RUBY' ? n.firstChild.textContent : n.textContent)).join(''));
 const assert = (cond, msg) => { if (!cond) throw new Error(msg); };
 const state = (page) => page.evaluate(() => JSON.parse(localStorage.getItem('chongshi.v1') || '{}'));
 const go = async (page, hash) => { await page.evaluate((h) => { location.hash = h; }, hash); await page.waitForTimeout(60); };
@@ -132,7 +152,7 @@ async function playRun(page, modes) {
 
 /* ---------- tests ---------- */
 await test('home, tabs and pinyin toggle', {}, async (page) => {
-  for (const h of ['scenes', 'recall', 'games', 'home']) { await page.click(`#tabs a[data-tab="${h}"]`); await page.waitForTimeout(50); assert((await page.locator('#tabs a.on').getAttribute('data-tab')) === h, 'tab ' + h); }
+  for (const h of ['scenes', 'talk', 'recall', 'games', 'home']) { await page.click(`#tabs a[data-tab="${h}"]`); await page.waitForTimeout(50); assert((await page.locator('#tabs a.on').getAttribute('data-tab')) === h, 'tab ' + h); }
   await go(page, 'scenes');
   assert((await page.locator('.station').count()) === SCENES.length, 'all stations listed');
   assert(!(await page.locator('rt').first().isVisible()), 'pinyin hidden by default');
@@ -279,9 +299,10 @@ await test('ears-only ride: sequencing, pause, rating, skip, finish', {}, async 
   assert(spoken[0].lang === 'en-US' && spoken[0].text === SCENES[0].setup, 'opens with the scene set-up in English');
   assert(spoken[1].text === SCENES[0].lines[0].zh.replace(/[“”]/g, ''), 'then the scene at natural speed');
   assert(spoken.some((s) => s.text.startsWith('问题：')), 'scene questions were asked aloud');
-  const last = spoken[spoken.length - 1].text;
-  assert(SCENES[0].chunks.some((c) => c.zh.replace(/[“”]/g, '') === last), 'first recall card comes from the scene just heard, got ' + last);
-  assert(spoken[spoken.length - 2].lang === 'en-US', 'English cue precedes the Chinese model');
+  // the first recall card: an English cue, then a Chinese model taken from the scene just heard
+  await page.waitForFunction(() => { const i = window.__spoken.map((x) => x.lang).lastIndexOf('en-US'); return i > 0 && window.__spoken[i + 1]; });
+  const model = await page.evaluate(() => { const i = window.__spoken.map((x) => x.lang).lastIndexOf('en-US'); return window.__spoken[i + 1]; });
+  assert(model.lang === 'zh-CN' && SCENES[0].chunks.some((c) => c.zh.replace(/[“”]/g, '') === model.text), 'English cue, then a phrase from the scene just heard; got ' + model.text);
   await page.click('.led-rate .no');
   await page.click('.ctl.main');
   const before = (await page.evaluate(() => window.__spoken)).length;
@@ -339,10 +360,228 @@ await test('backup code round-trips; reset needs two taps', {}, async (page) => 
   assert(JSON.stringify((await state(page)).cards) === JSON.stringify(before.cards), 'restored exactly');
 });
 
+await test('robotic system voices are never used', { scripts: [ROBOT_VOICES, FAKE_TTS, NO_MIC], tts: false }, async (page) => {
+  await page.evaluate(() => { window.__CS_FAST = 80; window.__SPEAK_MS = 10; });
+  await go(page, 'scene-s1');
+  await page.click('.bigplay');
+  await page.waitForFunction(() => JSON.parse(localStorage.getItem('chongshi.v1') || '{}').scenes?.s1?.listen, null, { timeout: 15000 });
+  await go(page, 'ride');
+  await page.click('.ride .btn.big');
+  await page.waitForFunction(() => window.__spoken.some((s) => s.lang === 'en-US'), null, { timeout: 10000 });
+  const used = [...new Set((await page.evaluate(() => window.__spoken)).map((s) => s.voice))];
+  assert(used.every((v) => ['Tingting', 'Samantha'].includes(v)), 'only natural voices spoke, got ' + used.join(', '));
+  await page.click('[aria-label="End ride"]');
+  await page.goto(URL + '#home');
+  await page.click('#gear');
+  const listed = await page.$$eval('#voice option', (o) => o.map((x) => x.textContent));
+  assert(listed.length === 1 && listed[0] === 'Tingting', 'settings lists only the natural voice, got ' + listed.join(', '));
+});
+
+await test('level check: scores bands, corrects for guessing, seeds the Words deck', {}, async (page) => {
+  await page.evaluate(() => { window.__SPEAK_MS = 5; });
+  assert(/Not measured yet/.test(await page.locator('.page').textContent()), 'home says the level is unmeasured');
+  await page.click('text=Take the level check');
+  await page.click('.level .primary');
+  await page.waitForSelector('.card.test');
+  let n = 0;
+  let heardItems = 0;
+  while (!(await page.locator('.summary.result').count())) {
+    const listening = await page.locator('.card.test .bigplay').count();
+    const w = listening ? (await page.evaluate(() => window.__spoken[window.__spoken.length - 1].text)) : await page.locator('.card.test .word-zh').textContent();
+    const info = WORD.get(w);
+    assert(info, 'word not in bank: ' + w);
+    if (listening) { heardItems++; assert(!(await page.locator('.card.test .word-zh').isVisible()), 'characters hidden in a listening item'); }
+    const opts = await page.$$eval('.level .opt', (els) => els.map((e) => e.textContent));
+    assert(opts.length === 4 && new Set(opts).size === 4 && opts.includes(info.g), 'four distinct options including the right one');
+    // know everything through HSK 5, nothing above
+    if (info.lv <= 5) await page.locator('.level .opt').nth(opts.indexOf(info.g)).click(); else await page.click('.level .ghost');
+    await page.locator('.card.test').click();
+    n++;
+    assert(n < 80, 'level check never ended');
+  }
+  assert(n === 56 && heardItems === 15, `56 items with 15 by ear, got ${n} and ${heardItems}`);
+  const st = await state(page);
+  const t = st.tests[0];
+  assert(t.level === 5 && t.frontier === 6, `level 5, frontier 6; got ${t.level}/${t.frontier}`);
+  assert(t.vocab === 2500, 'vocabulary estimate is the HSK 1-5 total, got ' + t.vocab);
+  assert(t.missed === 22 && Object.keys(st.cards).filter((k) => k.startsWith('w:')).length === 22, 'the 22 missed words are in the deck');
+  await page.click('text=Review missed words');
+  await page.waitForSelector('.card.word');
+  const first = await page.locator('.card.word .word-zh').textContent();
+  assert(WORD.get(first).lv >= 6, 'the deck opens on a missed word');
+  await page.click('text=Show answer');
+  assert((await page.locator('.word-en').textContent()) === WORD.get(first).g, 'answer shows the gloss');
+  await page.locator('.rate-btn').nth(2).click();
+  await page.goto(URL + '#home');
+  await page.reload();
+  await page.waitForSelector('.level-row');
+  assert((await page.locator('.level-row b').textContent()) === 'HSK 5', 'home shows the measured level after a reload');
+});
+
+await test('words deck without a level check starts at HSK 5 and can run by ear', {}, async (page) => {
+  await go(page, 'recall-words');
+  await page.waitForSelector('.card.word');
+  const w = await page.locator('.card.word .word-zh').textContent();
+  assert(WORD.get(w).lv === 5, 'first new word is HSK 5');
+  await page.click('text=By ear');
+  await page.waitForSelector('.card.word .bigplay');
+  assert(!(await page.locator('.card.word .word-zh').count()), 'characters hidden by ear');
+  await page.click('text=Show answer');
+  await page.locator('.rate-btn').nth(2).click();
+  const c = Object.entries((await state(page)).cards)[0];
+  assert(c[0].startsWith('w:') && c[1].i === 30, 'a word known on sight goes 30 days out');
+});
+
+await test('conversation on a claude.ai page: turns, translation, hint, debrief, kept phrase', { scripts: [NO_MIC, FAKE_CLAUDE] }, async (page) => {
+  await page.evaluate(() => { window.__SPEAK_MS = 5; });
+  await page.click('#tabs a[data-tab="talk"]');
+  await page.waitForSelector('.talk-card');
+  assert((await page.locator('.talk-card').count()) === TALKS.length, 'all scenarios offered');
+  await page.locator('.talk-card').first().click();
+  await page.waitForSelector('.bub.them .bub-tools');
+  assert((await plain(page.locator('.bub.them .zh'))) === '老师好！最近有点儿忙。您呢？', 'Claude opens in character');
+  assert((await page.evaluate(() => window.__spoken.length)) > 0, 'the reply is spoken');
+  assert(await page.locator('.orb').isHidden(), 'no mic control without a microphone');
+  await page.fill('#talk-input', '我很高兴认识你');
+  await page.press('#talk-input', 'Enter');
+  await page.waitForFunction(() => document.querySelectorAll('.bub.them .bub-tools').length === 2);
+  const asked = await page.evaluate(() => window.__asked[window.__asked.length - 1]);
+  assert(Array.isArray(asked) && asked[0].role === 'user' && /career advisor/.test(asked[0].content) && asked[asked.length - 1].role === 'user' && asked[asked.length - 1].content === '我很高兴认识你', 'instructions lead, the learner’s line ends the list');
+  await page.locator('.bub-tools .tr').first().click();
+  await page.waitForSelector('.bub .gloss');
+  await page.click('text=Suggest a reply');
+  await page.waitForFunction(() => /Not bad/.test(document.querySelector('.talk-hint').textContent));
+  await page.fill('#talk-input', '还行');
+  await page.click('.send');
+  await page.waitForFunction(() => document.querySelectorAll('.bub.them .bub-tools').length === 3);
+  await page.click('text=End and review');
+  await page.waitForSelector('.summary.result');
+  assert((await page.locator('.result .summary-sign b').textContent()) === 'HSK 5', 'debrief shows a level');
+  await page.click('.fixes >> text=Keep');
+  let st = await state(page);
+  assert(st.mine.length === 1 && st.talks.length === 1, 'phrase kept and conversation logged');
+  await page.goto(URL + '#recall');
+  await page.reload();
+  await page.waitForSelector('.card');
+  assert((await page.locator('.cue-en').textContent()) === 'Take your time, no rush.', 'the kept phrase comes first in Recall');
+  await page.click('#py');
+  await page.click('text=Show answer');
+  assert((await page.locator('.answer rt').count()) === 6, 'its pinyin lines up with its characters');
+});
+
+await test('conversation with an API key: setup, request shape, streamed reply', {}, async (page) => {
+  let sent = null;
+  await page.route('https://api.anthropic.com/v1/messages', async (route) => {
+    sent = { headers: route.request().headers(), body: JSON.parse(route.request().postData()) };
+    const ev = (o) => `event: ${o.type}\ndata: ${JSON.stringify(o)}\n\n`;
+    await route.fulfill({ status: 200, headers: { 'content-type': 'text/event-stream', 'access-control-allow-origin': '*' }, body:
+      ev({ type: 'message_start', message: {} }) + ev({ type: 'content_block_start', index: 0, content_block: { type: 'thinking', thinking: '' } }) + ev({ type: 'content_block_stop', index: 0 })
+      + ev({ type: 'content_block_start', index: 1, content_block: { type: 'text', text: '' } }) + ev({ type: 'content_block_delta', index: 1, delta: { type: 'text_delta', text: '老师好！' } })
+      + ev({ type: 'content_block_delta', index: 1, delta: { type: 'text_delta', text: '我来早了吗？' } }) + ev({ type: 'message_delta', delta: { stop_reason: 'end_turn' } }) + ev({ type: 'message_stop' }) });
+  });
+  await go(page, 'talk');
+  await page.waitForSelector('#api-key');
+  await page.locator('.talk-card').first().click();
+  assert(await page.locator('.board, #api-key').first().isVisible(), 'without a connection a scenario does not start');
+  await page.fill('#api-key', 'sk-ant-test');
+  await page.click('.key-row >> text=Save');
+  await page.waitForFunction(() => !document.querySelector('#api-key'));
+  await page.locator('.talk-card').nth(1).click();
+  await page.waitForSelector('.bub.them .bub-tools');
+  assert((await plain(page.locator('.bub.them .zh'))) === '老师好！我来早了吗？', 'streamed text assembled');
+  assert(sent.headers['x-api-key'] === 'sk-ant-test' && sent.headers['anthropic-version'] === '2026-10-21' && sent.headers['anthropic-dangerous-direct-browser-access'] === 'true', 'headers');
+  assert(sent.body.model === 'claude-opus-5-5' && sent.body.stream === true && sent.body.fallbacks === 'default' && sent.body.output_config.effort === 'low' && !('temperature' in sent.body), 'request body');
+  assert(/浩然/.test(sent.body.system) && sent.body.messages[0].role === 'user', 'role in the system prompt; first message from the user');
+  await go(page, 'recall');
+  await page.click('text=Show answer');
+  await page.locator('.rate-btn').nth(2).click();
+  assert(!JSON.stringify(await state(page)).includes('sk-ant-test'), 'the key is kept out of saved progress and its backup code');
+});
+
+await test('conversation by voice: recognition loop', { scripts: [FAKE_SR, FAKE_CLAUDE] }, async (page) => {
+  await page.evaluate(() => { window.__SPEAK_MS = 5; window.__SR_TEXT = '我也挺忙的'; });
+  await go(page, 'talk-smalltalk');
+  await page.waitForSelector('.bub.them .bub-tools');
+  await page.click('.orb');
+  await page.waitForFunction(() => document.querySelectorAll('.bub.me').length >= 1);
+  assert((await page.locator('.bub.me .zh').first().textContent()) === '我也挺忙的', 'spoken reply recognised and sent');
+  // after Claude answers, the mic reopens on its own
+  await page.waitForFunction(() => document.querySelectorAll('.bub.me').length >= 2, null, { timeout: 8000 });
+});
+
+const GEN = { zh: '读博值不值', en: 'Is a PhD worth it', who: '思琪', setup: 'Siqi wonders whether to apply for a PhD.', culture: 'A doctorate carries prestige with parents.',
+  lines: [['S', '老师，我在考虑要不要读博。', 'I am wondering whether to do a PhD.'], ['T', '你为什么想读博呢？', 'Why do you want to?'], ['S', '我爸妈觉得学历越高越好。', 'My parents think the higher the degree the better.'], ['T', '那你自己对研究感兴趣吗？', 'Are you interested in research yourself?'], ['S', '说实话，没那么感兴趣。', 'Honestly, not that much.'], ['T', '那就别勉强自己。', 'Then do not force yourself.']].map(([s, zh, en]) => ({ s, zh, en })),
+  qs: [{ q: '思琪的父母怎么想？', right: '学历越高越好', wrong: ['不要读博', '马上工作'], why: '学历越高越好.' }, { q: '思琪对研究感兴趣吗？', right: '没那么感兴趣', wrong: ['非常感兴趣', '不知道'], why: '没那么感兴趣.' }],
+  chunks: [['学历越高越好', 'The higher the degree, the better', '越…越…', '在父母眼里，|学历|越高|越好。', 'In parents eyes, the higher the degree the better.'], ['别勉强自己', 'Do not force yourself', 'Gentle.', '不想去|就|别勉强|自己。', 'If you do not want to go, do not force yourself.'], ['说实话', 'To be honest', 'Opener.', '说实话，|我|没|想好。', 'Honestly, I have not decided.'], ['随便坐。', 'duplicate of an authored phrase', '', 'x|y|z', 'x']].map(([zh, en, note, ex, exEn]) => ({ zh, en, note, ex, exEn })) };
+const CLAUDE_WRITES = FAKE_CLAUDE.replace("/JSON object/.test(flat) ?", "/Write a short Mandarin dialogue/.test(flat) ? " + JSON.stringify(JSON.stringify(GEN)) + " : /JSON object/.test(flat) ?");
+
+await test('Claude writes a new scene that plays like an authored one', { scripts: [NO_MIC, CLAUDE_WRITES] }, async (page) => {
+  await page.evaluate(() => { window.__SPEAK_MS = 5; });
+  await go(page, 'scenes');
+  await page.click('text=Write me a new scene');
+  await page.locator('.ideas .btn').first().click();
+  await page.click('text=Write the scene');
+  await page.waitForSelector('.steps');
+  assert((await page.locator('#t-zh').textContent()) === GEN.zh, 'opens the new scene');
+  await page.click('.steps button:nth-child(3)');
+  assert((await page.locator('.chunks li').count()) === 3, 'three usable phrases; the duplicate of an authored one is dropped');
+  await page.click('#py');
+  await page.waitForFunction(() => document.querySelectorAll('.thread .bub rt').length > 20, null, { timeout: 8000 });
+  const py = await page.locator('.thread .bub').first().locator('rt').allTextContents();
+  assert(py.join(' ').startsWith('lǎo shī') && py.includes('bó'), 'pinyin added from the word bank: ' + py.join(' '));
+  await go(page, 'scenes');
+  assert((await page.locator('.line').count()) === 6 && (await page.locator('.station').count()) === SCENES.length + 1, 'it has its own line on the map');
+  await page.reload();
+  await page.waitForSelector('.station');
+  assert((await page.locator('.station').count()) === SCENES.length + 1, 'and survives a reload');
+});
+
+// A claude.ai page with a private per-user document store shared by two "devices".
+const CLOUD = `window.claude = { use: async (name) => {
+  if (name === 'user') return { id: async () => 'u1' };
+  if (name === 'db') return { doc: (path) => ({
+    get: async () => { const v = await window.__cloudGet(path); return { exists: !!v, data: () => v }; },
+    set: async (d) => { await window.__cloudSet(path, d); },
+  }) };
+  return null;
+} };`;
+await test('progress syncs between two devices and merges, not overwrites', {}, async () => {
+  const cloud = {};
+  const device = async () => {
+    const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+    await ctx.addInitScript(FAKE_TTS); await ctx.addInitScript(NO_MIC); await ctx.addInitScript(CLOUD);
+    await ctx.exposeFunction('__cloudGet', (path) => cloud[path] || null);
+    await ctx.exposeFunction('__cloudSet', (path, d) => { cloud[path] = d; });
+    const p = await ctx.newPage();
+    await p.goto(URL); await p.waitForSelector('.board');
+    return p;
+  };
+  const rateOne = async (p, n) => { await go(p, 'recall'); for (let i = 0; i < n; i++) { await p.click('text=Show answer'); await p.locator('.rate-btn').nth(2).click(); } };
+  const pushed = async (p) => { await p.evaluate(() => document.dispatchEvent(new Event('visibilitychange'))); await p.waitForTimeout(300); };
+  const phone = await device();
+  await rateOne(phone, 2);
+  await phone.evaluate(() => { Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true }); });
+  await pushed(phone);
+  assert(Object.keys(cloud)[0] === 'data/users/u1/progress', 'stored under the private per-user path');
+  const laptop = await device();
+  await laptop.waitForFunction(() => Object.keys(JSON.parse(localStorage.getItem('chongshi.v1') || '{}').cards || {}).length === 2, null, { timeout: 8000 });
+  await go(laptop, 'game-chengyu');
+  await playRound(laptop, 'solve');
+  await laptop.evaluate(() => { Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true }); });
+  await pushed(laptop);
+  // back on the phone, which meanwhile did one more card offline
+  await phone.click('text=Show answer'); await phone.locator('.rate-btn').nth(2).click();
+  await phone.evaluate(() => { Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true }); });
+  await pushed(phone);
+  const cards = Object.keys((await state(phone)).cards);
+  assert(cards.length === 4 && cards.some((k) => k.startsWith('y:')), 'the phone holds its own three cards plus the idiom from the laptop, got ' + cards.length);
+  await phone.context().close(); await laptop.context().close();
+});
+
 for (const [w, hgt] of [[360, 640], [390, 844], [768, 1024], [1280, 800]]) {
   await test(`layout ${w}×${hgt}: no sideways scroll, controls reachable`, { viewport: { width: w, height: hgt } }, async (page) => {
     await page.click('#py');
-    for (const h of ['home', 'scenes', 'scene-s14', 'recall', 'games', 'game-weave', 'game-dictation', 'game-chengyu', 'game-register', 'ride']) {
+    for (const h of ['home', 'scenes', 'scene-s14', 'recall', 'recall-words', 'level', 'talk', 'compose', 'games', 'game-weave', 'game-dictation', 'game-chengyu', 'game-register', 'ride']) {
       await go(page, h);
       await noOverflow(page, h);
       if (h === 'scene-s14') { await page.click('.steps button:nth-child(3)'); await noOverflow(page, 'transcript'); }
